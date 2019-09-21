@@ -1,6 +1,6 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
 
-ARG PHP_VERSION="7.3.8"
+ARG PHP_VERSION="7.3.9"
 ARG SERVER_NAME="php-app"
 
 # A Json Object with Bitbucket or Github token to clone private Repos
