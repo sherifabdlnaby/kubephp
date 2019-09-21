@@ -1,0 +1,13 @@
+version: '3.7'
+
+# Start app using production image and production config. (This does not support hot-reload of code changes)
+# use `docker-compose up -d` to use prod image.
+services:
+  app:
+    build:
+      target: dev
+    ports:
+      - 8080:80
+      - 433:433
+    volumes:
+      - ../..:/var/www/app

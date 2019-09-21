@@ -1,0 +1,10 @@
+version: '3.7'
+
+# Production Image Target and defaults
+services:
+  app:
+    build:
+      target: prod
+    ports:
+      - 80:80
+      - 433:433
