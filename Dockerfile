@@ -185,17 +185,3 @@ COPY .docker/.scripts/docker-dev-entrypoint.sh /usr/local/bin/docker-dev-entrypo
 RUN chmod +x /usr/local/bin/docker-dev-entrypoint
 
 ENTRYPOINT ["docker-dev-entrypoint"]
-
-
-# ======================================================================================================================
-#                                                   --- TEST ---
-# -------------------------------------------  Install Testing Utilits -------------------------------------------------
-# ======================================================================================================================
-
-# Use base as test because:
-#  1- we (might need) to enable debugging.
-#  2- we need the entrypoint script to be able to mount volumes (for now)
-#  3- Devs need the extra tools like vim, curl and nano.
-# -> The image is no different than prod's except that it support mounting code volumes, this reduces build times of
-# testing server tremendously
-FROM prod AS test
