@@ -60,7 +60,10 @@ You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, an
 
 # Setup
 
-1. Clone The Repository
+### Get Template
+#### 1. Generate Repo from this Template
+
+1. Download This Repository
 2. Copy `Dockerfile`, `.docker` Directory, `Makefile`, and `.dockerignore` Into your Symfony Application Repository.
 3. Modify `Dockerfile` to your app needs, and add your app needed PHP Extensions and Required Packages.
 4. Situational:
@@ -68,6 +71,14 @@ You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, an
     - If you will expose SSL port to Production: Mount your signed certificates `server.crt` & `server.key` to `/etc/apache2/certs`.
       Also make sure `SERVER_NAME` build ARG matches Certificate's **Common Name**.
 5. run `make up` for development or `make deploy` for production. 
+
+OR
+
+<a href="https://github.com/sherifabdlnaby/symdocker/generate">
+<img src="https://user-images.githubusercontent.com/16992394/65464461-20c95880-de5a-11e9-9bf0-fc79d125b99e.png" alt="create repository from template"></a>
+
+<p> <small>And start from step 3..</small> </p>
+
       
 ## Building Image
 
