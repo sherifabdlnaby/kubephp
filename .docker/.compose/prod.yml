@@ -7,4 +7,4 @@ services:
       target: prod
     ports:
       - 80:80
-      - 433:433
+      - 443:443

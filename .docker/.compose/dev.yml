@@ -8,6 +8,6 @@ services:
       target: dev
     ports:
       - 8080:80
-      - 433:433
+      - 443:443
     volumes:
       - ../..:/var/www/app
