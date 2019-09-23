@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.4'
 
 # Start app using production image and production config. (This does not support hot-reload of code changes)
 # use `docker-compose up -d` to use prod image.
