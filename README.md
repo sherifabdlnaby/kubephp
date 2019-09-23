@@ -1,20 +1,34 @@
 <p align="center">
-  <img width="520px" src="https://user-images.githubusercontent.com/16992394/65461542-697e1300-de54-11e9-8e4f-34adcc448747.png">
+<img width="520px" src="https://user-images.githubusercontent.com/16992394/65461542-697e1300-de54-11e9-8e4f-34adcc448747.png">
 </p>
 <h2 align="center">🐳 An extendable multistage PHP Symfony 4.3+ Docker Image for Production and Development</h2>
 <p align="center">A Base Template Image to be added to your Symfony Application.</p>
 <p align="center">
-   <a><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat" alt="contributions welcome"></a>
-   <a href="https://github.com/sherifabdlnaby/symdocker/network"><img src="https://img.shields.io/github/forks/sherifabdlnaby/symdocker.svg" alt="GitHub forks"></a>
-<a href="https://github.com/sherifabdlnaby/symdocker/issues"><img src="https://img.shields.io/github/issues/sherifabdlnaby/symdocker.svg" alt="GitHub issues"></a>  
-<a><img src="https://img.shields.io/badge/PHP-7%5E-blueviolet" alt="PHP 7^"></a>
-<a><img src="https://img.shields.io/badge/Apache-2.4%5E-red" alt="Apache 2.4^"></a>
-<a><img src="https://img.shields.io/badge/Symfony-4%5E-black" alt="Symfony 4^"></a>
-<a href="https://raw.githubusercontent.com/sherifabdlnaby/symdocker/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="GitHub license"></a>
+	<a>
+		<img src="https://img.shields.io/github/v/tag/sherifabdlnaby/symdocker?label=release&amp;sort=semver">
+    </a>
+	<a>
+		<img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat" alt="contributions welcome">
+	</a>
+	<a>
+		<img src="https://img.shields.io/badge/PHP-7%5E-blueviolet" alt="PHP 7^">
+	</a>
+	<a>
+		<img src="https://img.shields.io/badge/Apache-2.4%5E-red" alt="Apache 2.4^">
+	</a>
+	<a>
+		<img src="https://img.shields.io/badge/Symfony-4%5E-black" alt="Symfony 4^">
+	</a>
+	<a href="https://github.com/sherifabdlnaby/symdocker/network">
+		<img src="https://img.shields.io/github/forks/sherifabdlnaby/symdocker.svg" alt="GitHub forks">
+	</a>
+	<a href="https://github.com/sherifabdlnaby/symdocker/issues">
+        <img src="https://img.shields.io/github/issues/sherifabdlnaby/symdocker.svg" alt="GitHub issues">
+	</a>
+	<a href="https://raw.githubusercontent.com/sherifabdlnaby/symdocker/blob/master/LICENSE">
+		<img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="GitHub license">
+	</a>
 </p>
-
-
-
 
 # Introduction
 **Docker Image for Symfony 4.3+ Application** running on **Apache 2.4** based on [PHP Official Image](https://hub.docker.com/_/php).
