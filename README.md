@@ -38,7 +38,7 @@ The Image utilizes docker's multistage builds to create multiple targets optimiz
 
 You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, and `.dockerignore` to your Symfony application repository and configure it to your needs.
 
-## Main Points 📜
+### Main Points 📜
 
 - **Production Image is a fully contained Image with source code and dependencies inside**, Development image is set up for mounting source code on runtime to allow development and debugging using the container.
 
@@ -51,6 +51,8 @@ You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, an
 - Dockerfile is arranged for optimize builds, so that changed won't invalidate cache as much as possible.
 
 - As Symfony 4+ [Uses Environment Variables](https://symfony.com/doc/4.3/configuration.html#configuration-based-on-environment-variables) for parameters, and only passing environment variables to the container is enough to be read by symfony. (no need to pass them through Apache2 conf too).
+
+-----
 
 # Requirements 
 
@@ -80,7 +82,7 @@ OR
 <p> <small>And start from step 3..</small> </p>
 
       
-## Building Image
+# Building Image
 
 1. The image is to be used as a base for your Symfony application image, you should modify its Dockerfile to your needs.
 
@@ -116,6 +118,10 @@ However in an environment where CI/CD pipelines will build the image, they will 
 ### Development
 1. Mount source code root to `/var/www/app`
 2. Expose container port `8080` and `443`. (or whatever you need actually)
+
+
+----
+
 
 # Configuration
 
@@ -173,6 +179,13 @@ However, Sometimes, some packages has commands that need to be run on startup, t
 Special about this file that it comes loaded with all OS Environment variables **as well as defaults from `.env` and `.env.${APP_ENV}` files.** so it won't need a special treatment handling parameters.
 
 > It is still discouraged to be used if it's possible to run these commands using composer scripts.
+
+--------
+
+# Misc Notes
+- Apache will output logs on container's stdout, and your application [shall do this too](https://stackoverflow.com/questions/38499825/symfony-logs-to-stdout-inside-docker-container). Read about [12factor/logs](https://12factor.net/logs) 
+- As Symfony 4+ [Uses Environment Variables](https://symfony.com/doc/4.3/configuration.html#configuration-based-on-environment-variables) for parameters, and only passing environment variables to the container is enough to be read by symfony. (no need to pass them through Apache2 conf too).
+- During Build, Image will run `composer dump-autoload` and `composer dump-env` to optimize for performance.
 
 # License 
 [MIT License](https://raw.githubusercontent.com/sherifabdlnaby/symdocker/blob/master/LICENSE)
