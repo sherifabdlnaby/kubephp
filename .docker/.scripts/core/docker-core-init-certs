@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+# $1 = SERVER NAME
+# $2 = Certificate File Name (<name.crt/key/csr)
+# $3 = Where to put certificates.
+
+printf "\nGenerating Default Self-Signed SSL Certificate with CommonName=%s \n" "$1"
+openssl genrsa -des3 -passout pass:xxxxx -out "$2".pass.key 2048
+openssl rsa -passin pass:xxxxx -in "$2".pass.key -out "$2".key && rm -f "$2".pass.key
+openssl req -new -key "$2".key -out "$2".csr -subj "/CN=$1"
+openssl x509 -req -days 3650 -in "$2".csr -signkey "$2".key -out "$2".crt
+
+printf "\nCopying Generated SSL Certificates to %s \n(%s.key and %s.crt)" "$3" "$2" "$2"
+mkdir -p "$3" && cp "$2".key "$2".crt "$3"

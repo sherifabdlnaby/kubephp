@@ -3,25 +3,6 @@ set -eu
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-# This part pass all container environment variables to apache's processes since by default apache doesn't pass them.
-# With this, adding OS Env variable to container is enough for PHP to pick it up, elimnating the extra step of adding
-# it to apache too.
-# Lock file to be able to restart container without appending env files again.
-LOCK=/var/lock/env-passed.lock
-if [ ! -f ${LOCK} ]; then
-    # Pass all OS Environment variables to Apache, hence it will be available to PHP App.
-    # Excluding HOME to surpress Apache warning for not having HOME env.
-    {
-      printf  "\n\n# --- Pass OS environment to Apache processes ---"
-      printf "# This block was generated during container entrypoint script"
-      env | grep -v ^HOME= | sed 's/=\(.*\)//' | awk '{print "PassEnv "$0}'
-     }  >> /etc/apache2/apache2.conf
-
-    touch ${LOCK}
-fi
-
-# ----------------------------------------------------------------------------------------------------------------------
-
 LOCK=/var/lock/runtime-setup.lock
 if [ ! -f ${LOCK} ]; then
     # !-- We want to only print in logs if something wrong happends, hence how below code is written. --!
@@ -43,4 +24,4 @@ fi
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Start php base-image entrypoint.
-exec docker-php-entrypoint "apache2-foreground"
+exec docker-core-entrypoint

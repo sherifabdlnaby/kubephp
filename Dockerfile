@@ -8,23 +8,40 @@ ARG COMPOSER_VERSION="1.9.0"
 FROM composer:${COMPOSER_VERSION} as composer
 
 # ======================================================================================================================
-#                                                   --- BASE ---
-# ---------------  This stage install needed extenstions, plugins and add all needed configurations  -------------------
+#                                                   --- CORE ---
+# ---------------  nginx on fpm, supervised by multirun  -------------------
 # ======================================================================================================================
-FROM php:${PHP_VERSION}-apache-stretch AS base
+
+FROM php:${PHP_VERSION}-fpm-alpine3.10 AS core
 
 # Maintainer label
 LABEL maintainer="sherifabdlnaby@gmail.com"
 
+# Add Nginx and Multirun, and forward nginx logs to stdout/err
+RUN apk add --no-cache nginx multirun					&& \
+ 	rm -rf /var/www/* /etc/nginx/conf.d/*		 		&& \
+ 	openssl dhparam -out "/etc/nginx/dhparam.pem" 2048	&& \
+ 	ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log
+
+# Add Core Scripts
+COPY .docker/.scripts/core/* /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker*
+
+# Entrypoint that starts nginx & php-fpm using multirun (under one main process)
+ENTRYPOINT ["docker-core-entrypoint"]
+
+# ======================================================================================================================
+#                                                   --- APP ---
+# ---------------  This stage install needed extenstions, plugins and add all needed configurations  -------------------
+# ======================================================================================================================
+FROM core AS base
+
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 
-RUN apt-get -yqq update && apt-get -yqq --no-install-recommends install \
-    # -----  Needed for PHP -----------------
-    # - Please define package version too ---
-    curl=7.52\* \
-    # ---------------------------------------
-    && apt-get -qq autoremove --purge -y  \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apk add --no-cache	\
+#    # -----  Needed for PHP -----------------
+#    # - Please define package version too ---
+    curl
 
 # ---------------------------------------- Install / Enable PHP Extensions ------------------------------------------
 
@@ -36,34 +53,20 @@ RUN apt-get -yqq update && apt-get -yqq --no-install-recommends install \
 
 RUN docker-php-ext-install opcache
 
+# ----------------------------------------------------- NGINX ----------------------------------------------------------
+
+ARG SERVER_NAME
+
+# Init SSL Certificates
+RUN docker-core-init-certs $SERVER_NAME "server" "/etc/nginx/ssl"
+
+# Copy Nginx Config
+COPY .docker/conf/nginx/nginx.conf   /etc/nginx/nginx.conf
+
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
 # Copy Symfony PHP config
 COPY .docker/conf/php/symfony.ini   $PHP_INI_DIR/conf.d/symfony.ini
-
-# ---------------------------------------------------- Apache ----------------------------------------------------------
-
-ARG SERVER_NAME="php-app"
-ENV SERVER_NAME $SERVER_NAME
-
-#-- Generate Default Self-signed SSL Certificate
-RUN openssl genrsa -des3 -passout pass:xxxxx -out server.pass.key 2048              && \
-    openssl rsa -passin pass:xxxxx -in server.pass.key -out server.key              && \
-    openssl req -new -key server.key -out server.csr -subj "/CN=${SERVER_NAME}"     && \
-    openssl x509 -req -days 3650 -in server.csr -signkey server.key -out server.crt && \
-    mkdir /etc/apache2/certs && cp server.key server.crt /etc/apache2/certs         && \
-#-- Enable SSL
-    a2enmod ssl																		&& \
-#-- Remove Apache Default Sites
-    rm -rf /etc/apache2/sites-*/*  /var/www/*
-
-# Copy Image Config
-COPY .docker/conf/apache2/apache2.conf  /etc/apache2/apache2.conf
-COPY .docker/conf/apache2/main.conf		/etc/apache2/conf-available/main.conf
-COPY .docker/conf/apache2/site.conf		/etc/apache2/sites-available/site.conf
-
-# Enable image's site (Enables both HTTP & HTTPS), and Test all config is OK.
-RUN a2ensite site && apachectl configtest
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
@@ -78,10 +81,9 @@ EXPOSE 80 443
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
 # Main entrypoint and Post-deployment custom command
-COPY .docker/.scripts/docker-entrypoint.sh          /usr/local/bin/docker-entrypoint
-COPY .docker/.scripts/docker-post-deploy-wrapper.sh /usr/local/bin/docker-post-deploy-wrapper
-COPY .docker/post-deployment.sh                     /usr/local/bin/docker-post-deployment
-RUN chmod +x /usr/local/bin/docker-*
+COPY .docker/.scripts/base/*	/usr/local/bin/
+COPY .docker/post-deployment.sh	/usr/local/bin/docker-post-deployment
+RUN chmod +x /usr/local/bin/docker*
 
 ENTRYPOINT ["docker-entrypoint"]
 

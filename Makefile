@@ -39,7 +39,7 @@ images:			## Show Image created by this Makefile (or Docker-compose in .docker)
 	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) images
 
 shell:			## Enter container shell
-	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) exec app /bin/bash
+	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) exec app /bin/sh
 
 restart:		## Restart container
 	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) restart
