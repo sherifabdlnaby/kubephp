@@ -18,16 +18,16 @@ FROM php:${PHP_VERSION}-fpm-alpine3.10 AS core
 LABEL maintainer="sherifabdlnaby@gmail.com"
 
 # Add Nginx and Multirun, and forward nginx logs to stdout/err
-RUN apk add --no-cache nginx multirun					&& \
- 	rm -rf /var/www/* /etc/nginx/conf.d/*		 		&& \
- 	openssl dhparam -out "/etc/nginx/dhparam.pem" 2048	&& \
+RUN apk add --no-cache nginx multirun fcgi								&& \
+ 	rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/*	&& \
+ 	openssl dhparam -out "/etc/nginx/dhparam.pem" 2048					&& \
  	ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log
 
 # Add Core Scripts
-COPY .docker/.scripts/core/* /usr/local/bin/
+COPY .docker/.scripts/core /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker*
 
-# Entrypoint that starts nginx & php-php-fpm using multirun (under one main process)
+# Entrypoint that starts nginx & php-php-fpm using multirun (under one parent process)
 ENTRYPOINT ["docker-core-entrypoint"]
 
 # ======================================================================================================================
@@ -55,31 +55,32 @@ RUN apk add --no-cache	\
 
 # ----------------------------------------------------- NGINX ----------------------------------------------------------
 
-ARG SERVER_NAME
+ARG SERVER_NAME="symdocker"
 
 # Init SSL Certificates
 RUN docker-core-init-certs $SERVER_NAME "server" "/etc/nginx/ssl"
 
 # Copy Nginx Config
-COPY .docker/conf/nginx/nginx.conf   /etc/nginx/nginx.conf
+COPY .docker/conf/nginx/ /etc/nginx/
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
 # Copy Symfony PHP config
 COPY .docker/conf/php/symfony.ini   $PHP_INI_DIR/conf.d/symfony.ini
-COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
 
 # ------------------------------------------------------ FPM -----------------------------------------------------------
 
-RUN rm -rf /usr/local/etc/php-fpm.d/*
-COPY .docker/conf/php-fpm/* /usr/local/etc/php-fpm.d/
+COPY .docker/conf/php-fpm /usr/local/etc/php-fpm.d/
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
 ENV COMPOSER_ALLOW_SUPERUSER 1
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
-# -------------------------------------------------- DIR & PORT --------------------------------------------------------
+# ----------------------------------------------------- MISC ----------------------------------------------------------
+
+# Check php-fpm and nginx config.
+RUN php-fpm -t && nginx -t
 
 WORKDIR /var/www/app
 EXPOSE 80 443
@@ -87,10 +88,12 @@ EXPOSE 80 443
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
 # Main entrypoint and Post-deployment custom command
-COPY .docker/.scripts/base/*	/usr/local/bin/
-COPY .docker/post-deployment.sh	/usr/local/bin/docker-post-deployment
+COPY .docker/.scripts/base/*			/usr/local/bin/
+COPY .docker/docker-healthcheck.sh		/usr/local/bin/docker-healthcheck
+COPY .docker/docker-post-deployment.sh	/usr/local/bin/docker-post-deployment
 RUN chmod +x /usr/local/bin/docker*
 
+HEALTHCHECK CMD ["docker-healthcheck"]
 ENTRYPOINT ["docker-entrypoint"]
 
 # ======================================================================================================================
@@ -168,7 +171,7 @@ ENV APP_DEBUG 1
 ## ---------------------------------------------------- Xdebug ----------------------------------------------------------
 #
 #RUN pecl install xdebug && docker-php-ext-enable xdebug
-#COPY .docker/conf/php/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+#COPY .docker/conf/php/xdebug.ini /usr/local/etc/php/conf-available/docker-php-ext-xdebug.ini
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
@@ -177,7 +180,7 @@ COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
 
 # ------------------------------------------------- Entry Point --------------------------------------------------------
 
-COPY .docker/.scripts/docker-dev-entrypoint.sh /usr/local/bin/docker-dev-entrypoint
+COPY .docker/scripts /usr/local/bin/docker-dev-entrypoint
 RUN chmod +x /usr/local/bin/docker-dev-entrypoint
 
 ENTRYPOINT ["docker-dev-entrypoint"]

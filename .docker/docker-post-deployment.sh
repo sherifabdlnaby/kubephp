@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+composer run-script --no-interaction post-install-cmd
+
 # Scripts that will run after deployment and composer install.
 # Should only used for ad-hoc commands, It's recommended to use composer scripts if possible.
 # This script working dir is application's directory, and all ENV variables from .env and OS are available here

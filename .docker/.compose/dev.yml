@@ -5,9 +5,12 @@ version: '3.4'
 services:
   app:
     build:
-      target: dev
+      target: base
     ports:
       - 8080:80
       - 443:443
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
     volumes:
-      - ../..:/var/www/app
+      - ../..:/var/www/app:cached
