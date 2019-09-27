@@ -9,7 +9,7 @@ FROM composer:${COMPOSER_VERSION} as composer
 
 # ======================================================================================================================
 #                                                   --- CORE ---
-# ---------------  nginx on fpm, supervised by multirun  -------------------
+# ---------------  nginx on php-fpm, supervised by multirun  -------------------
 # ======================================================================================================================
 
 FROM php:${PHP_VERSION}-fpm-alpine3.10 AS core
@@ -27,7 +27,7 @@ RUN apk add --no-cache nginx multirun					&& \
 COPY .docker/.scripts/core/* /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker*
 
-# Entrypoint that starts nginx & php-fpm using multirun (under one main process)
+# Entrypoint that starts nginx & php-php-fpm using multirun (under one main process)
 ENTRYPOINT ["docker-core-entrypoint"]
 
 # ======================================================================================================================
@@ -51,7 +51,7 @@ RUN apk add --no-cache	\
 #   EX: RUN docker-php-ext-install curl pdo pdo_mysql mysqli
 #   EX: RUN pecl install memcached && docker-php-ext-enable memcached
 
-RUN docker-php-ext-install opcache
+#RUN docker-php-ext-install opcache
 
 # ----------------------------------------------------- NGINX ----------------------------------------------------------
 
@@ -67,6 +67,12 @@ COPY .docker/conf/nginx/nginx.conf   /etc/nginx/nginx.conf
 
 # Copy Symfony PHP config
 COPY .docker/conf/php/symfony.ini   $PHP_INI_DIR/conf.d/symfony.ini
+COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
+
+# ------------------------------------------------------ FPM -----------------------------------------------------------
+
+RUN rm -rf /usr/local/etc/php-fpm.d/*
+COPY .docker/conf/php-fpm/* /usr/local/etc/php-fpm.d/
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
@@ -150,19 +156,19 @@ ENV APP_ENV dev
 ENV APP_DEBUG 1
 
 # --------------------------------------------------- Packages ---------------------------------------------------------
-
-ARG COMPOSER_RUNTIME_DEPS="git make openssh-client unzip zip"
-ARG DEV_IMAGE_UTILS="curl wget nano htop iputils-ping sysstat dnsutils"
-RUN apt-get -yqq update && apt-get -yqq  --no-install-recommends install \
-    # ----- Needed For Composer  --------------------
-    ${COMPOSER_RUNTIME_DEPS} \
-    # ----- Utilites --------------------------------
-    ${DEV_IMAGE_UTILS}
-
-# ---------------------------------------------------- Xdebug ----------------------------------------------------------
-
-RUN pecl install xdebug && docker-php-ext-enable xdebug
-COPY .docker/conf/php/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+#
+#ARG COMPOSER_RUNTIME_DEPS="git make openssh-client unzip zip"
+#ARG DEV_IMAGE_UTILS="curl wget nano htop iputils-ping sysstat dnsutils"
+#RUN apt-get -yqq update && apt-get -yqq  --no-install-recommends install \
+#    # ----- Needed For Composer  --------------------
+#    ${COMPOSER_RUNTIME_DEPS} \
+#    # ----- Utilites --------------------------------
+#    ${DEV_IMAGE_UTILS}
+#
+## ---------------------------------------------------- Xdebug ----------------------------------------------------------
+#
+#RUN pecl install xdebug && docker-php-ext-enable xdebug
+#COPY .docker/conf/php/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
