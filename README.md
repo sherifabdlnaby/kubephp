@@ -48,12 +48,17 @@ You should copy this repository`Dockerfile`, `docker` Directory, `Makefile`, and
 - Dockerfile is arranged for optimize builds, so that changed won't invalidate cache as much as possible.
 
 ### Image Targets
-| **Target**   	| **Description**                                                                                    	| **(extra?)** 	|          **Stdout**          	|             **Targets**            	|
+
+| **Target**   	| **Description**                                                                                    	|  **Size** 	|          **Stdout**          	|             **Targets**            	|
 |--------------	|----------------------------------------------------------------------------------------------------	|--------------	|:----------------------------:	|:-----------------------------------:	|
-| `nginx`      	| The Webserver, serves static content and replay others requests `php-fpm`                          	| No           	| Nginx Access and Error logs. 	|      `nginx-prod`, `nginx-dev`      	|
-| `fpm`        	| PHP_FPM, which will actually run the PHP Scripts for web requests.                                 	| No           	|  PHP Application logs only.  	|        `fpm-prod`, `fpm-dev`        	|
-| `supervisor` 	| Contains supervisor and source-code, for your consumers. (config at `docker/conf/supervisor/`)    	| Yes          	|    Stdout of all Commands.   	|           `supervisor-prod`           |
-| `cron`       	| Loads crontab and your app source-code, for your cron commands. (config at `docker/conf/crontab`) 	| Yes          	|     Stdout of all Crons.     	|              `cron-prod`            	|
+| `nginx`      	| The Webserver, serves static content and replay others requests `php-fpm`                          	| 21 MB        	| Nginx Access and Error logs. 	|      `nginx-prod`, `nginx-dev`      	|
+| `fpm`        	| PHP_FPM, which will actually run the PHP Scripts for web requests.                                 	| 78 MB        	|  PHP Application logs only.  	|        `fpm-prod`, `fpm-dev`        	|
+| `supervisor` 	| Contains supervisor and source-code, for your consumers. (config at `docker/conf/supervisor/`)    	| 120 MB       	|    Stdout of all Commands.   	|           `supervisor-prod`           |
+| `cron`       	| Loads crontab and your app source-code, for your cron commands. (config at `docker/conf/crontab`) 	| 78 MB        	|     Stdout of all Crons.     	|              `cron-prod`            	|
+
+> All Images are **Alpine** based.  Official PHP-Alpine-Cli image size is 79.4MB. 
+
+> Size stated above are calculated excluding source code and vendor directory. 
 
 -----
 
