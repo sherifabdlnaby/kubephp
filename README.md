@@ -11,10 +11,7 @@
 		<img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat" alt="contributions welcome">
 	</a>
 	<a>
-		<img src="https://img.shields.io/badge/PHP-7%5E-blueviolet" alt="PHP 7^">
-	</a>
-	<a>
-		<img src="https://img.shields.io/badge/Apache-2.4%5E-red" alt="Apache 2.4^">
+		<img src="https://img.shields.io/badge/PHP-%3E=7-blueviolet" alt="PHP >=7^">
 	</a>
 	<a>
 		<img src="https://img.shields.io/badge/Symfony-4%5E-black" alt="Symfony 4^">
@@ -31,8 +28,8 @@
 </p>
 
 # Introduction
-**Docker Image for Symfony 4.3+ Application** running on **Apache 2.4** based on [PHP Official Image](https://hub.docker.com/_/php).
-This image should be used as a **base** image for your Symfony Project, and you shall extend and edit it according to your app needs.
+**Docker Image for Symfony 4.3+ Application** running on **Nginx + PHP_FPM** based on [PHP Official Image](https://hub.docker.com/_/php).
+This image should be used as a **base** image for your Symfony Project, **and you shall extend and edit it according to your app needs.**
 The Image utilizes docker's multistage builds to create multiple targets optimized for **production** and **development**.
 
 
@@ -40,17 +37,23 @@ You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, an
 
 ### Main Points 📜
 
-- **Production Image is a fully contained Image with source code and dependencies inside**, Development image is set up for mounting source code on runtime to allow development and debugging using the container.
+- **Production Image is a fully contained Image with source code and dependencies inside**, Development image is set up for mounting source code on runtime with hot-reload.
 
-- Image configuration is transparent, you can view and modify any of Apache's `*.conf` files, PHP `*.ini` files or Entrypoint `*.sh` scripts in the `.docker` directory. 
+- Image configuration is transparent, you can view and modify any of the configurations that determine the behavior of the application.
 
-- **Apache SSL is enabled**, and hence run **HTTP** and **HTTPS** endpoints, with **HTTPS** it uses self-signed certificate generated at runtime. however, for production you'll need to mount your own signed certificates to `/etc/apache2/certs` amd overwrite defaults.
+- Nginx **HTTP**, **HTTPS**, and **HTTP2** are pre-configured, for **HTTPS** it uses self-signed certificate generated at build-time. For production you'll need to mount your own signed certificates to `/etc/nginx/ssl` amd overwrite defaults.
 
 - Image tries to fail at build time as much as possible by running all sort of Checks.
 
 - Dockerfile is arranged for optimize builds, so that changed won't invalidate cache as much as possible.
 
-- As Symfony 4+ [Uses Environment Variables](https://symfony.com/doc/4.3/configuration.html#configuration-based-on-environment-variables) for parameters, and only passing environment variables to the container is enough to be read by symfony. (no need to pass them through Apache2 conf too).
+### Image Targets
+| **Target**   	| **Description**                                                                                    	| **(extra?)** 	|          **Stdout**          	|             **Variants**            	|
+|--------------	|----------------------------------------------------------------------------------------------------	|--------------	|:----------------------------:	|:-----------------------------------:	|
+| `nginx`      	| The Webserver, serves static content and replay others requests `php-fpm`                          	| No           	| Nginx Access and Error logs. 	|      `nginx-prod`, `nginx-dev`      	|
+| `fpm`        	| PHP_FPM, which will actually run the PHP Scripts for web requests.                                 	| No           	|  PHP Application logs only.  	|        `fpm-prod`, `fpm-dev`        	|
+| `supervisor` 	| Contains supervisor and source-code, for your consumers. (config at `.docker/conf/supervisor/`)    	| Yes          	|    Stdout of all Commands.   	|           `supervisor-prod`           |
+| `cron`       	| Loads crontab and your app source-code, for your cron commands. (config at `.docker/conf/crontab`) 	| Yes          	|     Stdout of all Crons.     	|              `cron-prod`            	|
 
 -----
 
@@ -59,6 +62,7 @@ You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, an
 - [Docker 17.05 or higher](https://docs.docker.com/install/) 
 - [Docker-Compose 3.4 or higher](https://docs.docker.com/compose/install/) (optional) 
 - Symfony 4+ Application
+- PHP >= 7 Application
 
 # Setup
 
@@ -70,7 +74,7 @@ You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, an
 3. Modify `Dockerfile` to your app needs, and add your app needed PHP Extensions and Required Packages.
 4. Situational:
     - If you will use `Makefile` and `Docker-Compose`: go to `.docker/.composer/.env` and modify `SERVER_NAME` to your app's name.
-    - If you will expose SSL port to Production: Mount your signed certificates `server.crt` & `server.key` to `/etc/apache2/certs`.
+    - If you will expose SSL port to Production: Mount your signed certificates `server.crt` & `server.key` to `/etc/nginx/ssl`.
       Also make sure `SERVER_NAME` build ARG matches Certificate's **Common Name**.
 5. run `make up` for development or `make deploy` for production. 
 
@@ -93,32 +97,29 @@ However in an environment where CI/CD pipelines will build the image, they will 
 | **ARG**            | **Description**                                                                                                                                      | **Default** |
 |--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|
 | `PHP_VERSION`      | PHP Version used in the Image                                                                                                                        | `7.3.9`     |
+| `ALPINE_VERSION`   | Alpine Version                                                                                                                                       | `3.10`      |
+| `NGINX_VERSION`    | Nginx Version                                                                                                                                        | `1.17.4`    |
 | `COMPOSER_VERSION` | Composer Version used in Image                                                                                                                       | `1.9.0`     |
-| `SERVER_NAME`      | Server Name (In production, and using SSL, this must match certificate's *common name*)                                                              | `php-app`   |
-| `COMPOSER_AUTH`    | A Json Object with Bitbucket or Github token to clone private Repos with composer.  [Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}`        | 
+| `SERVER_NAME`      | Server Name</br> (In production, and using SSL, this must match certificate's *common name*)                                                              | `php-app`   |
+| `COMPOSER_AUTH`    | A Json Object with Bitbucket or Github token to clone private Repos with composer.</br>[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}`        | 
 
 ### Runtime Environment Variables
 | **ENV**     | **Description** | **Default**                                                 |
 |-------------|-----------------|-------------------------------------------------------------|
-| `APP_ENV`   | App Environment | - `prod` for Production image                               |
-|             |                 | - `dev` for Development image                               |
-| `APP_DEBUG` | Enable Debug    | - `0` for Production image                                  |
-|             |                 | - `1` for Development image                                 |
+| `APP_ENV`   | App Environment | - `prod` for Production image</br> - `dev` for Development image     |
+| `APP_DEBUG` | Enable Debug    | - `0` for Production image</br>- `1` for Development image           |
 
 ## Tips for building Image in different environments
 
 ### Production
-1. For SSL: Mount your signed certificates as secrets to `/etc/apache2/certs/server.key` & `/etc/apache2/certs/server.crt`
+1. For SSL: Mount your signed certificates as secrets to `/etc/nginx/ssl/server.key` & `/etc/nginx/ssl/server.crt`
 2. Make sure build argument `SERVER_NAME` matches certificate's **common name**.
 2. Expose container port `80` and `443`.
 
-> You can disable SSL by modifying `site.conf` in `.docker/conf/apache2` config if you don't need HTTPS or is having it using a front loadbalancer/proxy.
-
-> By default, Image has a generated self-signed certificate for SSL connections added at run time.
+> By default, Image has a generated self-signed certificate for SSL connections added at build time.
 ### Development
 1. Mount source code root to `/var/www/app`
 2. Expose container port `8080` and `443`. (or whatever you need actually)
-
 
 ----
 
@@ -136,14 +137,13 @@ However in an environment where CI/CD pipelines will build the image, they will 
 Add Packages needed for PHP runtime in this section of the `Dockerfile`.
 ```Dockerfile
 ...
-# ---------------- Install Packages Needed Inside Base Image ------------------
-RUN apt-get -yqq update && apt-get -yqq --no-install-recommends install \
-    # -----  Needed for PHP -----------------
-    # - Please define package version too ---
-    curl=7.52\* \
-    # ---------------------------------------
-    && apt-get -qq autoremove --purge -y  \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
+RUN apk add --no-cache		\
+#    # - Please define package version too ---
+#    # -----  Needed for Image----------------
+	fcgi tini \
+#    # -----  Needed for PHP -----------------
+    <HERE>
 ...
 ``` 
 
@@ -161,15 +161,21 @@ RUN docker-php-ext-install opcache && pecl install memcached && docker-php-ext-e
 
 > At build time, Image will run `composer check-platform-reqs` to check that PHP and extensions versions match the platform requirements of the installed packages.
 
-## 2. Apache Configuration
+## 2. Nginx Configuration
 
-1. Apache defaults are all defined in `.docker/conf/apache2/apache2.conf` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/conf/apache2/apache2.conf)
-2. Site configurations are defined in `.docker/conf/apache2/main.conf` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/conf/apache2/main.conf) and default using [optimized recommended config by Symfony](https://symfony.com/doc/current/setup/web_server_configuration.html#apache-with-mod-php-php-cgi).
-3. Virtualhost configurations are defined in `.docker/conf/apache2/site.conf` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/conf/apache2/site.conf) that configure both HTTP and HTTPS hosts and Include `main.conf`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/conf/apache2/main.conf) to keep things DRY.
+Nginx defaults are all defined in `.docker/conf/nginx/` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/conf/nginx/)
+
+Nginx is pre-configured with:
+1. HTTP, HTTPS, and HTTP2.
+2. Rate limit (`rate=5r/s`)
+3. Access & Error logs to `stdout/err`
+4. Recommended Security Headers
+5. Serving Static content with default cache `7d`
+6. Metrics endpoint at `:8080/stub_status` from localhost only.
 
 ##### Note
 
-> At build time, Image will run `apachectl configtest` to check Apache config file syntax is OK.
+> At build time, Image will run `nginx -t` to check config file syntax is OK.
 
 ## 3. Post Deployment Custom Scripts
 
@@ -183,9 +189,10 @@ Special about this file that it comes loaded with all OS Environment variables *
 --------
 
 # Misc Notes
-- Apache will output logs on container's stdout, and your application [shall do this too](https://stackoverflow.com/questions/38499825/symfony-logs-to-stdout-inside-docker-container). Read about [12factor/logs](https://12factor.net/logs) 
-- As Symfony 4+ [Uses Environment Variables](https://symfony.com/doc/4.3/configuration.html#configuration-based-on-environment-variables) for parameters, and only passing environment variables to the container is enough to be read by symfony. (no need to pass them through Apache2 conf too).
+- Your application [should log app logs to stdout.](https://stackoverflow.com/questions/38499825/symfony-logs-to-stdout-inside-docker-container). Read about [12factor/logs](https://12factor.net/logs) 
+- By default, `php-fpm` access & error logs are disabled as they're mirrored on `nginx`, this is so that `php-fpm` image will contains **only** application logs written by PHP.
 - During Build, Image will run `composer dump-autoload` and `composer dump-env` to optimize for performance.
+- In **production**, Image contains source-code, however you must sync both `php-fpm` and `nginx` images so that they contain the same code.
 
 # License 
 [MIT License](https://raw.githubusercontent.com/sherifabdlnaby/symdocker/blob/master/LICENSE)
@@ -195,12 +202,12 @@ Copyright (c) 2019 Sherif Abdel-Naby
 
 PR(s) are Open and welcomed.
 
-This image has so little to do with Symfony itself and more with Setting up a PHP Website with Apache, hence it can be extended for other PHP Frameworks (e.g Laravel, etc). maybe if you're interested to build a similar image for another framework we can collaborate. 
+This image has so little to do with Symfony itself and more with Setting up a PHP Website with Nginx and FPM, hence it can be extended for other PHP Frameworks (e.g Laravel, etc). maybe if you're interested to build a similar image for another framework we can collaborate. 
 
 ### Possible Ideas
 
-- [ ] Add a slim image with supervisor(and no apache) for running consumers.
-- [ ] Add a slim image with cron tab(and no apache) for cron job instances.
+- [x] Add a slim image with supervisor for running consumers.
+- [x] Add a slim image with cron tab for cron job instances.
 - [ ] Add node build stage that compiles javascript.
 - [ ] Recreate the image for Symfony 3^
 - [ ] Recreate the image for Laravel
