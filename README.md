@@ -33,7 +33,7 @@ This image should be used as a **base** image for your Symfony Project, **and yo
 The Image utilizes docker's multistage builds to create multiple targets optimized for **production** and **development**.
 
 
-You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, and `.dockerignore` to your Symfony application repository and configure it to your needs.
+You should copy this repository`Dockerfile`, `docker` Directory, `Makefile`, and `.dockerignore` to your Symfony application repository and configure it to your needs.
 
 ### Main Points 📜
 
@@ -48,12 +48,12 @@ You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, an
 - Dockerfile is arranged for optimize builds, so that changed won't invalidate cache as much as possible.
 
 ### Image Targets
-| **Target**   	| **Description**                                                                                    	| **(extra?)** 	|          **Stdout**          	|             **Variants**            	|
+| **Target**   	| **Description**                                                                                    	| **(extra?)** 	|          **Stdout**          	|             **Targets**            	|
 |--------------	|----------------------------------------------------------------------------------------------------	|--------------	|:----------------------------:	|:-----------------------------------:	|
 | `nginx`      	| The Webserver, serves static content and replay others requests `php-fpm`                          	| No           	| Nginx Access and Error logs. 	|      `nginx-prod`, `nginx-dev`      	|
 | `fpm`        	| PHP_FPM, which will actually run the PHP Scripts for web requests.                                 	| No           	|  PHP Application logs only.  	|        `fpm-prod`, `fpm-dev`        	|
-| `supervisor` 	| Contains supervisor and source-code, for your consumers. (config at `.docker/conf/supervisor/`)    	| Yes          	|    Stdout of all Commands.   	|           `supervisor-prod`           |
-| `cron`       	| Loads crontab and your app source-code, for your cron commands. (config at `.docker/conf/crontab`) 	| Yes          	|     Stdout of all Crons.     	|              `cron-prod`            	|
+| `supervisor` 	| Contains supervisor and source-code, for your consumers. (config at `docker/conf/supervisor/`)    	| Yes          	|    Stdout of all Commands.   	|           `supervisor-prod`           |
+| `cron`       	| Loads crontab and your app source-code, for your cron commands. (config at `docker/conf/crontab`) 	| Yes          	|     Stdout of all Crons.     	|              `cron-prod`            	|
 
 -----
 
@@ -70,10 +70,10 @@ You should copy this repository`Dockerfile`, `.docker` Directory, `Makefile`, an
 #### 1. Generate Repo from this Template
 
 1. Download This Repository
-2. Copy `Dockerfile`, `.docker` Directory, `Makefile`, and `.dockerignore` Into your Symfony Application Repository.
+2. Copy `Dockerfile`, `docker` Directory, `Makefile`, and `.dockerignore` Into your Symfony Application Repository.
 3. Modify `Dockerfile` to your app needs, and add your app needed PHP Extensions and Required Packages.
 4. Situational:
-    - If you will use `Makefile` and `Docker-Compose`: go to `.docker/.composer/.env` and modify `SERVER_NAME` to your app's name.
+    - If you will use `Makefile` and `Docker-Compose`: go to `docker/.composer/.env` and modify `SERVER_NAME` to your app's name.
     - If you will expose SSL port to Production: Mount your signed certificates `server.crt` & `server.key` to `/etc/nginx/ssl`.
       Also make sure `SERVER_NAME` build ARG matches Certificate's **Common Name**.
 5. run `make up` for development or `make deploy` for production. 
@@ -129,9 +129,9 @@ However in an environment where CI/CD pipelines will build the image, they will 
 ## 1. PHP Extensions, Dependencies, and Configuration
 
 ### Modify PHP Configuration
-1. PHP `prod` Configuration  `.docker/conf/php/php-prod.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/conf/php/php-prod.ini) 
-2. PHP `dev` Configuration  `.docker/conf/php/php-dev.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/conf/php/php-dev.ini) 
-3. PHP additional [Symfony recommended configuration](https://symfony.com/doc/current/performance.html#configure-opcache-for-maximum-performance) at `.docker/conf/php/symfony.ini` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/conf/php/symfony.ini) 
+1. PHP `prod` Configuration  `docker/conf/php/php-prod.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/conf/php/php-prod.ini) 
+2. PHP `dev` Configuration  `docker/conf/php/php-dev.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/conf/php/php-dev.ini) 
+3. PHP additional [Symfony recommended configuration](https://symfony.com/doc/current/performance.html#configure-opcache-for-maximum-performance) at `docker/conf/php/symfony.ini` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/conf/php/symfony.ini) 
 
 ### Add Packages needed for PHP runtime
 Add Packages needed for PHP runtime in this section of the `Dockerfile`.
@@ -163,7 +163,7 @@ RUN docker-php-ext-install opcache && pecl install memcached && docker-php-ext-e
 
 ## 2. Nginx Configuration
 
-Nginx defaults are all defined in `.docker/conf/nginx/` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/conf/nginx/)
+Nginx defaults are all defined in `docker/conf/nginx/` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/conf/nginx/)
 
 Nginx is pre-configured with:
 1. HTTP, HTTPS, and HTTP2.
@@ -181,10 +181,18 @@ Nginx is pre-configured with:
 
 Post Installation scripts should be configured in `composer.json` in the `post-install-cmd` [part](https://getcomposer.org/doc/articles/scripts.md#command-events).
 
-However, Sometimes, some packages has commands that need to be run on startup, that are not compatible with composer, provided in the image a shell script `post-deployment.sh`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/.docker/post-deployment.sh) that will be executed after deployment. 
+However, Sometimes, some packages has commands that need to be run on startup, that are not compatible with composer, provided in the image a shell script `post-deployment.sh`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/post-deployment.sh) that will be executed after deployment. 
 Special about this file that it comes loaded with all OS Environment variables **as well as defaults from `.env` and `.env.${APP_ENV}` files.** so it won't need a special treatment handling parameters.
 
 > It is still discouraged to be used if it's possible to run these commands using composer scripts.
+
+## 3. Supervisor Consumers
+
+If you have consumers (e.g rabbitMq or Kafka consumers) that need to be run under supervisor, you can define these at `docker/conf/supervisor/*`, which will run by the `supervisor` image target.
+
+## 4. Cron Commands
+
+If you have cron jobs, you can define them in `docker/conf/crontab`, which will run by the `cron` image target.
 
 --------
 
