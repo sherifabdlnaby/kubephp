@@ -126,16 +126,36 @@ COPY /.docker/conf/supervisor/ /etc/supervisor/
 ENTRYPOINT ["docker-base-supervisor-entrypoint"]
 
 # ======================================================================================================================
+#                                                  --- Vendor ---
+# ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
+# ======================================================================================================================
+
+FROM composer as vendor
+
+# Quicken Composer Installation by paralleizing downloads
+RUN composer global require hirak/prestissimo --prefer-dist
+
+# Copy Dependencies files
+COPY composer.json composer.json
+COPY composer.lock composer.lock
+
+# Set PHP Version of the Image
+RUN composer config platform.php ${PHP_VERSION}
+
+# A Json Object with Bitbucket or Github token to clone private Repos with composer
+# Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
+ARG COMPOSER_AUTH={}
+ENV COMPOSER_AUTH $COMPOSER_AUTH
+
+# Install Dependeinces
+RUN composer install -n --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --no-dev --prefer-dist
+
+# ======================================================================================================================
 # ==========================================  DEVELOPMENT FINAL STAGES  ================================================
 #                                                    --- DEV ---
 # ======================================================================================================================
 
-# ----------------------------------------------------- NGINX ----------------------------------------------------------
-
-FROM nginx AS nginx-dev
-
 # ------------------------------------------------------ FPM -----------------------------------------------------------
-
 FROM fpm AS fpm-dev
 
 ENV APP_ENV dev
@@ -163,47 +183,20 @@ ENTRYPOINT ["docker-dev-fpm-entrypoint"]
 ARG COMPOSER_AUTH={}
 ENV COMPOSER_AUTH $COMPOSER_AUTH
 
+# ----------------------------------------------------- NGINX ----------------------------------------------------------
+FROM nginx AS nginx-dev
+ENV APP_ENV dev
+COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
+
 # ----------------------------------------------------- CRON -----------------------------------------------------------
 FROM cron AS cron-dev
-COPY .docker/.scripts/dev/	/usr/local/bin/
-RUN  chmod +x /usr/local/bin/docker-dev-*
-ENTRYPOINT ["docker-dev-cron-entrypoint"]
-ARG COMPOSER_AUTH={}
-ENV COMPOSER_AUTH $COMPOSER_AUTH
+ENV APP_ENV dev
+COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
 
 # -------------------------------------------------- SUPERVISOR --------------------------------------------------------
 FROM supervisor AS supervisor-dev
-COPY .docker/.scripts/dev/	/usr/local/bin/
-RUN  chmod +x /usr/local/bin/docker-dev-*
-ENTRYPOINT ["docker-dev-supervisor-entrypoint"]
-ARG COMPOSER_AUTH={}
-ENV COMPOSER_AUTH $COMPOSER_AUTH
-
-# ======================================================================================================================
-#                                                  --- Vendor ---
-# ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
-# ======================================================================================================================
-
-FROM composer as vendor
-
-# Quicken Composer Installation by paralleizing downloads
-RUN composer global require hirak/prestissimo --prefer-dist
-
-# Copy Dependencies files
-COPY composer.json composer.json
-COPY composer.lock composer.lock
-
-# Set PHP Version of the Image
-RUN composer config platform.php ${PHP_VERSION}
-
-# A Json Object with Bitbucket or Github token to clone private Repos with composer
-# Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
-ARG COMPOSER_AUTH={}
-ENV COMPOSER_AUTH $COMPOSER_AUTH
-
-# Install Dependeinces
-RUN composer install -n --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --no-dev --prefer-dist
-
+ENV APP_ENV dev
+COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
 
 # ======================================================================================================================
 # ===========================================  PRODUCTION FINAL STAGES  ================================================
@@ -215,16 +208,19 @@ FROM nginx AS nginx-prod
 COPY public /var/www/app/public
 VOLUME ["/etc/nginx/ssl"]
 EXPOSE 80 443
+
 # ------------------------------------------------------ FPM -----------------------------------------------------------
 FROM fpm AS fpm-prod
 COPY --from=vendor /app/vendor /var/www/app/vendor
 COPY . .
 RUN docker-base-prod-install
+
 # ----------------------------------------------------- CRON -----------------------------------------------------------
 FROM cron AS cron-prod
 COPY --from=vendor /app/vendor /var/www/app/vendor
 COPY . .
 RUN docker-base-prod-install
+
 # -------------------------------------------------- SUPERVISOR --------------------------------------------------------
 FROM supervisor AS supervisor-prod
 COPY --from=vendor /app/vendor /var/www/app/vendor
