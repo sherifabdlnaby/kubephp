@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+# 1. Dump optimzed autoload for vendor and app classes.
+# 2. Dump env from .env and .env.prod to .env.local.php for env variables defaults and optimzed loading.
+# 	 --no-scripts as scripts are run on runtime via entrypoint.
+# 3. checks that PHP and extensions versions match the platform requirements of the installed packages.
+composer dump-autoload -n -o --no-scripts --no-dev && composer dump-env prod && composer check-platform-reqs

@@ -8,7 +8,7 @@ $(error The ENV variable is invalid. must be one of <prod|dev> )
 endif
 
 COMPOSE_FILES_PATH := -f docker-compose.yml -f ./$(ENV).yml
-COMPOSE_PREFIX_CMD := cd .docker/.compose &&
+COMPOSE_PREFIX_CMD := cd .docker/.compose && COMPOSE_DOCKER_CLI_BUILD=1
 
 # --------------------------
 

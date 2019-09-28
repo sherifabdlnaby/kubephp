@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+docker-base-entrypoint
+
+exec supervisord --nodaemon --configuration /etc/supervisor/supervisord.conf

@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -eu
 
 # Dev entry point does steps that is done in prod image, only that it does it at
 # container runtime not image build time, as dev container expects the code to be
@@ -7,4 +7,4 @@ set -e
 docker-dev-install
 
 echo "Starting..."
-exec docker-fpm-entrypoint
+exec docker-base-supervisor-entrypoint

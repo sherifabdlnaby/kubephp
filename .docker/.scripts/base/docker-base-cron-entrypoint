@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+docker-base-entrypoint
+
+exec tini crond -f -l 8

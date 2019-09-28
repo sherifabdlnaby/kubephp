@@ -16,3 +16,15 @@ services:
       - 443:443
     volumes:
       - ../..:/var/www/app:cached
+
+  cron:
+    build:
+      target: cron-dev
+    volumes:
+      - ../..:/var/www/app:cached
+
+  supervisor:
+    build:
+      target: supervisor-dev
+    volumes:
+      - ../..:/var/www/app:cached

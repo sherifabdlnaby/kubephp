@@ -21,10 +21,11 @@ LABEL maintainer="sherifabdlnaby@gmail.com"
 
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 
-RUN apk add --no-cache	\
-	fcgi				\
-#    # -----  Needed for PHP -----------------
+RUN apk add --no-cache		\
 #    # - Please define package version too ---
+#    # -----  Needed for Image----------------
+	fcgi tini \
+#    # -----  Needed for PHP -----------------
     curl
 
 # ---------------------------------------- Install / Enable PHP Extensions ------------------------------------------
@@ -50,6 +51,8 @@ COPY --from=composer /usr/bin/composer /usr/bin/composer
 # ----------------------------------------------------- MISC -----------------------------------------------------------
 
 WORKDIR /var/www/app
+ENV APP_ENV prod
+ENV APP_DEBUG 0
 
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
@@ -95,8 +98,8 @@ RUN apk add --no-cache openssl											&& \
 COPY .docker/.scripts/nginx /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-nginx-*
 
-# Init SSL Certificates
-RUN docker-nginx-init-certs $SERVER_NAME "server" "/etc/nginx/ssl"
+# Init SSL Certificates & Validate Conf Syntax
+RUN docker-nginx-init-certs $SERVER_NAME "server" "/etc/nginx/ssl" && nginx -t
 
 # Copy Nginx Config
 COPY .docker/conf/nginx/ /etc/nginx/
@@ -105,69 +108,27 @@ COPY .docker/conf/nginx/ /etc/nginx/
 HEALTHCHECK CMD ["docker-nginx-healthcheck"]
 
 # ======================================================================================================================
-#                                                  --- Vendor ---
+#                                             --- CRON & SUPERVISOR ---
 # ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
 # ======================================================================================================================
+# ----------------------------------------------------- CRON -----------------------------------------------------------
 
-FROM composer as vendor
+FROM base AS cron
+COPY .docker/conf/crontab /etc/crontab
+RUN crontab /etc/crontab
+ENTRYPOINT ["docker-base-cron-entrypoint"]
 
-# Quicken Composer Installation by paralleizing downloads
-RUN composer global require hirak/prestissimo --prefer-dist
+# -------------------------------------------------- SUPERVISOR --------------------------------------------------------
 
-# Copy Dependencies files
-COPY composer.json composer.json
-COPY composer.lock composer.lock
-
-# Set PHP Version of the Image
-RUN composer config platform.php ${PHP_VERSION}
-
-# A Json Object with Bitbucket or Github token to clone private Repos with composer
-# Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
-ARG COMPOSER_AUTH={}
-ENV COMPOSER_AUTH $COMPOSER_AUTH
-
-# Install Dependeinces
-RUN composer install -n --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --no-dev --prefer-dist
-
-
-# ======================================================================================================================
-# ===========================================  PRODUCTION FINAL STAGES  ================================================
-#                                                   --- PROD ---
-# ======================================================================================================================
-
-# ----------------------------------------------------- NGINX ----------------------------------------------------------
-
-FROM nginx AS nginx-prod
-
-# Copy Public Assets
-COPY public /var/www/app/public
-VOLUME ["/etc/nginx/ssl"]
-EXPOSE 80 443
-
-# ------------------------------------------------------ FPM -----------------------------------------------------------
-
-FROM fpm AS fpm-prod
-
-ENV APP_ENV prod
-ENV APP_DEBUG 0
-
-# Add Vendor Packages
-COPY --from=vendor /app/vendor /var/www/app/vendor
-
-# Copy Source Code
-COPY . .
-
-# 1. Dump optimzed autoload for vendor and app classes.
-# 2. Dump env from .env and .env.prod to .env.local.php for env variables defaults and optimzed loading.
-# 	 --no-scripts as scripts are run on runtime via entrypoint.
-# 3. checks that PHP and extensions versions match the platform requirements of the installed packages.
-RUN composer dump-autoload -n -o --no-scripts --no-dev && composer dump-env prod && composer check-platform-reqs
+FROM base AS supervisor
+RUN apk add --no-cache supervisor
+COPY /.docker/conf/supervisor/ /etc/supervisor/
+ENTRYPOINT ["docker-base-supervisor-entrypoint"]
 
 # ======================================================================================================================
 # ==========================================  DEVELOPMENT FINAL STAGES  ================================================
 #                                                    --- DEV ---
 # ======================================================================================================================
-
 
 # ----------------------------------------------------- NGINX ----------------------------------------------------------
 
@@ -201,3 +162,71 @@ ENTRYPOINT ["docker-dev-fpm-entrypoint"]
 # For Runtime `composer install`
 ARG COMPOSER_AUTH={}
 ENV COMPOSER_AUTH $COMPOSER_AUTH
+
+# ----------------------------------------------------- CRON -----------------------------------------------------------
+FROM cron AS cron-dev
+COPY .docker/.scripts/dev/	/usr/local/bin/
+RUN  chmod +x /usr/local/bin/docker-dev-*
+ENTRYPOINT ["docker-dev-cron-entrypoint"]
+ARG COMPOSER_AUTH={}
+ENV COMPOSER_AUTH $COMPOSER_AUTH
+
+# -------------------------------------------------- SUPERVISOR --------------------------------------------------------
+FROM supervisor AS supervisor-dev
+COPY .docker/.scripts/dev/	/usr/local/bin/
+RUN  chmod +x /usr/local/bin/docker-dev-*
+ENTRYPOINT ["docker-dev-supervisor-entrypoint"]
+ARG COMPOSER_AUTH={}
+ENV COMPOSER_AUTH $COMPOSER_AUTH
+
+# ======================================================================================================================
+#                                                  --- Vendor ---
+# ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
+# ======================================================================================================================
+
+FROM composer as vendor
+
+# Quicken Composer Installation by paralleizing downloads
+RUN composer global require hirak/prestissimo --prefer-dist
+
+# Copy Dependencies files
+COPY composer.json composer.json
+COPY composer.lock composer.lock
+
+# Set PHP Version of the Image
+RUN composer config platform.php ${PHP_VERSION}
+
+# A Json Object with Bitbucket or Github token to clone private Repos with composer
+# Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
+ARG COMPOSER_AUTH={}
+ENV COMPOSER_AUTH $COMPOSER_AUTH
+
+# Install Dependeinces
+RUN composer install -n --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --no-dev --prefer-dist
+
+
+# ======================================================================================================================
+# ===========================================  PRODUCTION FINAL STAGES  ================================================
+#                                                   --- PROD ---
+# ======================================================================================================================
+
+# ----------------------------------------------------- NGINX ----------------------------------------------------------
+FROM nginx AS nginx-prod
+COPY public /var/www/app/public
+VOLUME ["/etc/nginx/ssl"]
+EXPOSE 80 443
+# ------------------------------------------------------ FPM -----------------------------------------------------------
+FROM fpm AS fpm-prod
+COPY --from=vendor /app/vendor /var/www/app/vendor
+COPY . .
+RUN docker-base-prod-install
+# ----------------------------------------------------- CRON -----------------------------------------------------------
+FROM cron AS cron-prod
+COPY --from=vendor /app/vendor /var/www/app/vendor
+COPY . .
+RUN docker-base-prod-install
+# -------------------------------------------------- SUPERVISOR --------------------------------------------------------
+FROM supervisor AS supervisor-prod
+COPY --from=vendor /app/vendor /var/www/app/vendor
+COPY . .
+RUN docker-base-prod-install
