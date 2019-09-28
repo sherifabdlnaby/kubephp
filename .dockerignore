@@ -7,8 +7,8 @@
 README.md
 CHANGELOG.md
 docker-compose*.yml
-.docker/docker-compose*.yml
-.docker/compose/*
+docker/docker-compose*.yml
+docker/compose/*
 Dockerfile
 Makefile
 vendor

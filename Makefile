@@ -8,7 +8,7 @@ $(error The ENV variable is invalid. must be one of <prod|dev> )
 endif
 
 COMPOSE_FILES_PATH := -f docker-compose.yml -f ./$(ENV).yml
-COMPOSE_PREFIX_CMD := cd .docker/.compose && COMPOSE_DOCKER_CLI_BUILD=1
+COMPOSE_PREFIX_CMD := cd docker/.compose && COMPOSE_DOCKER_CLI_BUILD=1
 
 # --------------------------
 
@@ -35,7 +35,7 @@ stop:			## Stop Container
 logs:			## Tail container logs with -n 1000
 	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) logs --follow --tail=1000
 
-images:			## Show Image created by this Makefile (or Docker-compose in .docker)
+images:			## Show Image created by this Makefile (or Docker-compose in docker)
 	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) images
 
 shell:			## Enter container shell
@@ -48,5 +48,5 @@ rm:				## Remove current container
 	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) rm -f
 
 help:       	## Show this help.
-	@echo "Make Application Docker Images and Containers using Docker-Compose files in '.docker' Dir."
+	@echo "Make Application Docker Images and Containers using Docker-Compose files in 'docker' Dir."
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m ENV=<prod|dev> (default: dev)\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)

@@ -40,8 +40,8 @@ RUN docker-php-ext-install opcache
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
-COPY .docker/conf/php/php-prod.ini  $PHP_INI_DIR/php.ini
-COPY .docker/conf/php/symfony.ini   $PHP_INI_DIR/conf.d/symfony.ini
+COPY docker/conf/php/php-prod.ini  $PHP_INI_DIR/php.ini
+COPY docker/conf/php/symfony.ini   $PHP_INI_DIR/conf.d/symfony.ini
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
@@ -57,9 +57,9 @@ ENV APP_DEBUG 0
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
 # Add scripts and Entrypoint + clean!
-COPY .docker/healthcheck.sh			/usr/local/bin/docker-healthcheck
-COPY .docker/post-deployment.sh		/usr/local/bin/docker-post-deployment
-COPY .docker/.scripts/base/*		/usr/local/bin/
+COPY docker/healthcheck.sh			/usr/local/bin/docker-healthcheck
+COPY docker/post-deployment.sh		/usr/local/bin/docker-post-deployment
+COPY docker/.scripts/base/*		/usr/local/bin/
 RUN  chmod +x /usr/local/bin/docker* && rm -rf /var/www/* /usr/local/etc/php-fpm.d/*
 
 HEALTHCHECK CMD ["docker-healthcheck"]
@@ -73,8 +73,8 @@ CMD ["docker-base-entrypoint"]
 FROM base AS fpm
 
 # Copy PHP-FPM config, scripts, and validate syntax.
-COPY .docker/conf/php-fpm/	/usr/local/etc/php-fpm.d/
-COPY .docker/.scripts/fpm/	/usr/local/bin/
+COPY docker/conf/php-fpm/	/usr/local/etc/php-fpm.d/
+COPY docker/.scripts/fpm/	/usr/local/bin/
 
 # Chmod scripts, validate Syntax
 RUN  chmod +x /usr/local/bin/docker-fpm-* && php-fpm -t
@@ -96,14 +96,14 @@ RUN apk add --no-cache openssl											&& \
  	rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/*	&& \
  	adduser -u 82 -D -S -G www-data www-data
 
-COPY .docker/.scripts/nginx /usr/local/bin/
+COPY docker/.scripts/nginx /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-nginx-*
 
 # Init SSL Certificates & Validate Conf Syntax
 RUN docker-nginx-init-certs $SERVER_NAME "server" "/etc/nginx/ssl" && nginx -t
 
 # Copy Nginx Config
-COPY .docker/conf/nginx/ /etc/nginx/
+COPY docker/conf/nginx/ /etc/nginx/
 
 # Add Healthcheck
 HEALTHCHECK CMD ["docker-nginx-healthcheck"]
@@ -118,7 +118,7 @@ ENTRYPOINT ["docker-nginx-entrypoint"]
 # ----------------------------------------------------- CRON -----------------------------------------------------------
 
 FROM base AS cron
-COPY .docker/conf/crontab /etc/crontab
+COPY docker/conf/crontab /etc/crontab
 RUN crontab /etc/crontab
 ENTRYPOINT ["docker-base-cron-entrypoint"]
 
@@ -126,7 +126,7 @@ ENTRYPOINT ["docker-base-cron-entrypoint"]
 
 FROM base AS supervisor
 RUN apk add --no-cache supervisor
-COPY /.docker/conf/supervisor/ /etc/supervisor/
+COPY /docker/conf/supervisor/ /etc/supervisor/
 ENTRYPOINT ["docker-base-supervisor-entrypoint"]
 
 # ======================================================================================================================
@@ -173,13 +173,13 @@ RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS	&& \
     pecl install xdebug										&& \
     docker-php-ext-enable xdebug							&& \
     apk del -f .build-deps
-COPY .docker/conf/php/xdebug.ini /usr/local/etc/php/conf-available/docker-php-ext-xdebug.ini
+COPY docker/conf/php/xdebug.ini /usr/local/etc/php/conf-available/docker-php-ext-xdebug.ini
 
 # PHP dev config
-COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
+COPY docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
 
 # Entrypoint Scripts
-COPY .docker/.scripts/dev/	/usr/local/bin/
+COPY docker/.scripts/dev/	/usr/local/bin/
 RUN  chmod +x /usr/local/bin/docker-dev-*
 ENTRYPOINT ["docker-dev-fpm-entrypoint"]
 
@@ -190,7 +190,7 @@ ENV COMPOSER_AUTH $COMPOSER_AUTH
 # ----------------------------------------------------- NGINX ----------------------------------------------------------
 FROM nginx AS nginx-dev
 ENV APP_ENV dev
-COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
+COPY docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
 
 # ======================================================================================================================
 # ===========================================  PRODUCTION FINAL STAGES  ================================================
