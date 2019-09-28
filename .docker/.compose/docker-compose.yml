@@ -20,17 +20,3 @@ services:
       args:
         SERVER_NAME: ${SERVER_NAME}
         COMPOSER_AUTH: ${COMPOSER_AUTH}
-
-  cron:
-    build:
-      context: ../..
-      args:
-        SERVER_NAME: ${SERVER_NAME}
-        COMPOSER_AUTH: ${COMPOSER_AUTH}
-
-  supervisor:
-    build:
-      context: ../..
-      args:
-        SERVER_NAME: ${SERVER_NAME}
-        COMPOSER_AUTH: ${COMPOSER_AUTH}
