@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+# FPM Healthcheck First
+docker-fpm-healthcheck-core || exit 1;
+
+# App healthcheck second
+docker-healthcheck || exit 1;

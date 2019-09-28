@@ -1,4 +1,0 @@
-#!/bin/sh
-set -eu
-
-exec multirun "php-fpm" "nginx -g 'daemon off;'"

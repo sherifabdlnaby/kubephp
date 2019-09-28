@@ -15,4 +15,4 @@ composer check-platform-reqs
 
 # Run Parent Entrypoint
 echo "Starting..."
-exec docker-entrypoint
+exec docker-fpm-entrypoint

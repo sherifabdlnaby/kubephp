@@ -1,6 +1,8 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
 
 ARG PHP_VERSION="7.3.9"
+ARG ALPINE_VERSION="3.10"
+ARG NGINX_VERSION="1.17.4"
 ARG COMPOSER_VERSION="1.9.0"
 
 # -------------------------------------------------- Composer Image ----------------------------------------------------
@@ -8,37 +10,19 @@ ARG COMPOSER_VERSION="1.9.0"
 FROM composer:${COMPOSER_VERSION} as composer
 
 # ======================================================================================================================
-#                                                   --- CORE ---
-# ---------------  nginx on php-fpm, supervised by multirun  -------------------
+#                                                   --- Base ---
+# ---------------  This stage install needed extenstions, plugins and add all needed configurations  -------------------
 # ======================================================================================================================
 
-FROM php:${PHP_VERSION}-fpm-alpine3.10 AS core
+FROM php:${PHP_VERSION}-fpm-alpine${ALPINE_VERSION} AS base
 
 # Maintainer label
 LABEL maintainer="sherifabdlnaby@gmail.com"
 
-# Add Nginx and Multirun, and forward nginx logs to stdout/err
-RUN apk add --no-cache nginx multirun fcgi								&& \
- 	rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/*	&& \
- 	openssl dhparam -out "/etc/nginx/dhparam.pem" 2048					&& \
- 	ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log
-
-# Add Core Scripts
-COPY .docker/.scripts/core /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker*
-
-# Entrypoint that starts nginx & php-php-fpm using multirun (under one parent process)
-ENTRYPOINT ["docker-core-entrypoint"]
-
-# ======================================================================================================================
-#                                                   --- APP ---
-# ---------------  This stage install needed extenstions, plugins and add all needed configurations  -------------------
-# ======================================================================================================================
-FROM core AS base
-
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 
 RUN apk add --no-cache	\
+	fcgi				\
 #    # -----  Needed for PHP -----------------
 #    # - Please define package version too ---
     curl
@@ -51,50 +35,74 @@ RUN apk add --no-cache	\
 #   EX: RUN docker-php-ext-install curl pdo pdo_mysql mysqli
 #   EX: RUN pecl install memcached && docker-php-ext-enable memcached
 
-#RUN docker-php-ext-install opcache
-
-# ----------------------------------------------------- NGINX ----------------------------------------------------------
-
-ARG SERVER_NAME="symdocker"
-
-# Init SSL Certificates
-RUN docker-core-init-certs $SERVER_NAME "server" "/etc/nginx/ssl"
-
-# Copy Nginx Config
-COPY .docker/conf/nginx/ /etc/nginx/
+RUN docker-php-ext-install opcache
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
-# Copy Symfony PHP config
+COPY .docker/conf/php/php-prod.ini  $PHP_INI_DIR/php.ini
 COPY .docker/conf/php/symfony.ini   $PHP_INI_DIR/conf.d/symfony.ini
-
-# ------------------------------------------------------ FPM -----------------------------------------------------------
-
-COPY .docker/conf/php-fpm /usr/local/etc/php-fpm.d/
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
 ENV COMPOSER_ALLOW_SUPERUSER 1
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
-# ----------------------------------------------------- MISC ----------------------------------------------------------
-
-# Check php-fpm and nginx config.
-RUN php-fpm -t && nginx -t
+# ----------------------------------------------------- MISC -----------------------------------------------------------
 
 WORKDIR /var/www/app
-EXPOSE 80 443
 
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
-# Main entrypoint and Post-deployment custom command
-COPY .docker/.scripts/base/*			/usr/local/bin/
-COPY .docker/docker-healthcheck.sh		/usr/local/bin/docker-healthcheck
-COPY .docker/docker-post-deployment.sh	/usr/local/bin/docker-post-deployment
-RUN chmod +x /usr/local/bin/docker*
+# Add scripts and Entrypoint + clean!
+COPY .docker/healthcheck.sh			/usr/local/bin/docker-healthcheck
+COPY .docker/post-deployment.sh		/usr/local/bin/docker-post-deployment
+COPY .docker/.scripts/base/*		/usr/local/bin/
+RUN  chmod +x /usr/local/bin/docker* && rm -rf /var/www/* /usr/local/etc/php-fpm.d/*
 
 HEALTHCHECK CMD ["docker-healthcheck"]
-ENTRYPOINT ["docker-entrypoint"]
+CMD ["docker-base-entrypoint"]
+
+# ======================================================================================================================
+#                                                   --- FPM ---
+# ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
+# ======================================================================================================================
+
+FROM base AS fpm
+
+# Copy PHP-FPM config, scripts, and validate syntax.
+COPY .docker/conf/php-fpm/	/usr/local/etc/php-fpm.d/
+COPY .docker/.scripts/fpm/	/usr/local/bin/
+
+# Chmod scripts, validate Syntax
+RUN  chmod +x /usr/local/bin/docker-fpm-* && php-fpm -t
+
+HEALTHCHECK CMD ["docker-fpm-healthcheck"]
+ENTRYPOINT ["docker-fpm-entrypoint"]
+
+# ======================================================================================================================
+#                                                  --- NGINX ---
+# ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
+# ======================================================================================================================
+FROM nginx:${NGINX_VERSION}-alpine AS nginx
+
+ARG SERVER_NAME="symdocker"
+
+RUN apk add --no-cache openssl											&& \
+ 	openssl dhparam -out "/etc/nginx/dhparam.pem" 2048					&& \
+ 	rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/*	&& \
+ 	adduser -u 82 -D -S -G www-data www-data
+
+COPY .docker/.scripts/nginx /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-nginx-*
+
+# Init SSL Certificates
+RUN docker-nginx-init-certs $SERVER_NAME "server" "/etc/nginx/ssl"
+
+# Copy Nginx Config
+COPY .docker/conf/nginx/ /etc/nginx/
+
+# Add Healthcheck
+HEALTHCHECK CMD ["docker-nginx-healthcheck"]
 
 # ======================================================================================================================
 #                                                  --- Vendor ---
@@ -121,18 +129,27 @@ ENV COMPOSER_AUTH $COMPOSER_AUTH
 # Install Dependeinces
 RUN composer install -n --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --no-dev --prefer-dist
 
+
 # ======================================================================================================================
+# ===========================================  PRODUCTION FINAL STAGES  ================================================
 #                                                   --- PROD ---
-# ---------------------  Copies Source Code and Dependinces into Image, and run autoload/env dump  ---------------------
 # ======================================================================================================================
 
-FROM base AS prod
+# ----------------------------------------------------- NGINX ----------------------------------------------------------
+
+FROM nginx AS nginx-prod
+
+# Copy Public Assets
+COPY public /var/www/app/public
+VOLUME ["/etc/nginx/ssl"]
+EXPOSE 80 443
+
+# ------------------------------------------------------ FPM -----------------------------------------------------------
+
+FROM fpm AS fpm-prod
 
 ENV APP_ENV prod
 ENV APP_DEBUG 0
-
-# Copy In prod PHP config
-COPY .docker/conf/php/php-prod.ini  $PHP_INI_DIR/php.ini
 
 # Add Vendor Packages
 COPY --from=vendor /app/vendor /var/www/app/vendor
@@ -146,46 +163,41 @@ COPY . .
 # 3. checks that PHP and extensions versions match the platform requirements of the installed packages.
 RUN composer dump-autoload -n -o --no-scripts --no-dev && composer dump-env prod && composer check-platform-reqs
 
-VOLUME ["/etc/apache2/certs"]
-
 # ======================================================================================================================
-#                                                   --- DEV ---
-# --------------  Install Development Utilits and Add Dev Entrypoint that support source code mounting  ----------------
+# ==========================================  DEVELOPMENT FINAL STAGES  ================================================
+#                                                    --- DEV ---
 # ======================================================================================================================
 
-FROM base AS dev
+
+# ----------------------------------------------------- NGINX ----------------------------------------------------------
+
+FROM nginx AS nginx-dev
+
+# ------------------------------------------------------ FPM -----------------------------------------------------------
+
+FROM fpm AS fpm-dev
 
 ENV APP_ENV dev
 ENV APP_DEBUG 1
 
-# --------------------------------------------------- Packages ---------------------------------------------------------
-#
-#ARG COMPOSER_RUNTIME_DEPS="git make openssh-client unzip zip"
-#ARG DEV_IMAGE_UTILS="curl wget nano htop iputils-ping sysstat dnsutils"
-#RUN apt-get -yqq update && apt-get -yqq  --no-install-recommends install \
-#    # ----- Needed For Composer  --------------------
-#    ${COMPOSER_RUNTIME_DEPS} \
-#    # ----- Utilites --------------------------------
-#    ${DEV_IMAGE_UTILS}
-#
-## ---------------------------------------------------- Xdebug ----------------------------------------------------------
-#
-#RUN pecl install xdebug && docker-php-ext-enable xdebug
-#COPY .docker/conf/php/xdebug.ini /usr/local/etc/php/conf-available/docker-php-ext-xdebug.ini
+# Install Composer runtime deps, and dev utilits
+RUN apk add --no-cache git make openssh-client unzip zip curl nano htop
 
-# ------------------------------------------------------ PHP -----------------------------------------------------------
+# Xdebug
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS	&& \
+    pecl install xdebug										&& \
+    docker-php-ext-enable xdebug							&& \
+    apk del -f .build-deps
+COPY .docker/conf/php/xdebug.ini /usr/local/etc/php/conf-available/docker-php-ext-xdebug.ini
 
-# Copy In dev PHP config
+# PHP dev config
 COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
 
-# ------------------------------------------------- Entry Point --------------------------------------------------------
+# Entrypoint Scripts
+COPY .docker/.scripts/dev/	/usr/local/bin/
+RUN  chmod +x /usr/local/bin/docker-dev-*
+ENTRYPOINT ["docker-dev-fpm-entrypoint"]
 
-COPY .docker/scripts /usr/local/bin/docker-dev-entrypoint
-RUN chmod +x /usr/local/bin/docker-dev-entrypoint
-
-ENTRYPOINT ["docker-dev-entrypoint"]
-
-# A Json Object with Bitbucket or Github token to clone private Repos with composer (needed in dev entrypoint)
-# Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
+# For Runtime `composer install`
 ARG COMPOSER_AUTH={}
 ENV COMPOSER_AUTH $COMPOSER_AUTH

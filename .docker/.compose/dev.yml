@@ -1,16 +1,18 @@
 version: '3.4'
 
-# Start app using production image and production config. (This does not support hot-reload of code changes)
-# use `docker-compose up -d` to use prod image.
 services:
   app:
     build:
-      target: base
+      target: fpm-dev
+    volumes:
+      - ../..:/var/www/app:cached
+
+  web:
+    build:
+      context: ../..
+      target: nginx-dev
     ports:
       - 8080:80
       - 443:443
-    environment:
-      APP_ENV: prod
-      APP_DEBUG: 0
     volumes:
       - ../..:/var/www/app:cached

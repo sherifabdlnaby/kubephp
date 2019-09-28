@@ -13,3 +13,14 @@ services:
 #    environment:
 #      DATABASE_URL: ${DATABASE_URL}
 #      APP_ENV: <prod|test|dev>
+
+  web:
+    build:
+      context: ../..
+      args:
+        SERVER_NAME: ${SERVER_NAME}
+        COMPOSER_AUTH: ${COMPOSER_AUTH}
+  ##    Pass environment variables either here or in .env.<prod|dev|test> in project root
+  #    environment:
+  #      DATABASE_URL: ${DATABASE_URL}
+  #      APP_ENV: <prod|test|dev>
