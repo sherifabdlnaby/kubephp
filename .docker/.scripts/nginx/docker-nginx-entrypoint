@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+
+# Envsubset all files and only replace exported envs.
+for f in $(find /etc/nginx/ -name "*.conf"); do envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" < $f > "$f"; done
+
+exec nginx -g 'daemon off;'

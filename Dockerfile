@@ -89,6 +89,7 @@ ENTRYPOINT ["docker-fpm-entrypoint"]
 FROM nginx:${NGINX_VERSION}-alpine AS nginx
 
 ARG SERVER_NAME="symdocker"
+ENV SERVER_NAME=$SERVER_NAME
 
 RUN apk add --no-cache openssl											&& \
  	openssl dhparam -out "/etc/nginx/dhparam.pem" 2048					&& \
@@ -106,6 +107,9 @@ COPY .docker/conf/nginx/ /etc/nginx/
 
 # Add Healthcheck
 HEALTHCHECK CMD ["docker-nginx-healthcheck"]
+
+# Add Entrypoint
+ENTRYPOINT ["docker-nginx-entrypoint"]
 
 # ======================================================================================================================
 #                                             --- CRON & SUPERVISOR ---
@@ -185,16 +189,6 @@ ENV COMPOSER_AUTH $COMPOSER_AUTH
 
 # ----------------------------------------------------- NGINX ----------------------------------------------------------
 FROM nginx AS nginx-dev
-ENV APP_ENV dev
-COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
-
-# ----------------------------------------------------- CRON -----------------------------------------------------------
-FROM cron AS cron-dev
-ENV APP_ENV dev
-COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
-
-# -------------------------------------------------- SUPERVISOR --------------------------------------------------------
-FROM supervisor AS supervisor-dev
 ENV APP_ENV dev
 COPY .docker/conf/php/php-dev.ini  $PHP_INI_DIR/php.ini
 
