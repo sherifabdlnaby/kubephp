@@ -1,7 +1,7 @@
 <p align="center">
 <img width="520px" src="https://user-images.githubusercontent.com/16992394/65461542-697e1300-de54-11e9-8e4f-34adcc448747.png">
 </p>
-<h2 align="center">🐳 An preconfigured, extendable, multistage, PHP Symfony 4.3+ Docker Image for Production and Development</h2>
+<h2 align="center">🐳 A preconfigured, extendable, multistage, PHP Symfony 4.3+ Docker Image for Production and Development</h2>
 <p align="center">.</p>
 <p align="center">
 	<a>
@@ -72,9 +72,11 @@ OR
 1. Modify `Dockerfile` to your app needs, and add your app needed PHP Extensions and Required Packages.
 2. Go to `docker/.composer/.env` and modify `SERVER_NAME` to your app's name.
 3. Run `make up` for development or `make deploy` for production. 
+4. Go to [https://localhost](https://localhost) 
 
 > Makefile is just a wrapper over docker-compose commands.
 
+> Production runs on port `80` and `443`, Development runs on `8080` and `443`.
       
 # Building and Extending Image 
 
