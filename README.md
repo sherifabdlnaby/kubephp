@@ -1,8 +1,8 @@
 <p align="center">
 <img width="520px" src="https://user-images.githubusercontent.com/16992394/65461542-697e1300-de54-11e9-8e4f-34adcc448747.png">
 </p>
-<h2 align="center">🐳 An extendable multistage PHP Symfony 4.3+ Docker Image for Production and Development</h2>
-<p align="center">A Base Template Image to be added to your Symfony Application.</p>
+<h2 align="center">🐳 An preconfigured, extendable, multistage, PHP Symfony 4.3+ Docker Image for Production and Development</h2>
+<p align="center">.</p>
 <p align="center">
 	<a>
 		<img src="https://img.shields.io/github/v/tag/sherifabdlnaby/symdocker?label=release&amp;sort=semver">
@@ -28,37 +28,24 @@
 </p>
 
 # Introduction
-**Docker Image for Symfony 4.3+ Application** running on **Nginx + PHP_FPM** based on [PHP Official Image](https://hub.docker.com/_/php).
-This image should be used as a **base** image for your Symfony Project, **and you shall extend and edit it according to your app needs.**
-The Image utilizes docker's multistage builds to create multiple targets optimized for **production** and **development**.
+**Docker Image for Symfony 4.3+ Application** running **Nginx + PHP FPM** based on [PHP](https://hub.docker.com/_/php) & [Nginx](https://hub.docker.com/_/nginx) **Alpine Official Images**.
 
+This is a pre-configured template image for your Symfony Project, **and you shall extend and edit it according to your app requirements.**
+The Image utilizes docker's multistage builds to create multiple targets optimized for **production** and **development**.
 
 You should copy this repository`Dockerfile`, `docker` Directory, `Makefile`, and `.dockerignore` to your Symfony application repository and configure it to your needs.
 
 ### Main Points 📜
 
-- **Production Image is a fully contained Image with source code and dependencies inside**, Development image is set up for mounting source code on runtime with hot-reload.
+- **Production Images is a fully contained Image with source code and dependencies inside**, Development image is set up for mounting source code on runtime with hot-reload.
 
-- Image configuration is transparent, you can view and modify any of the configurations that determine the behavior of the application.
+- Image configuration is transparent, all configuration and default configurations that determine app behavior are present in the image directory.
 
 - Nginx **HTTP**, **HTTPS**, and **HTTP2** are pre-configured, for **HTTPS** it uses self-signed certificate generated at build-time. For production you'll need to mount your own signed certificates to `/etc/nginx/ssl` amd overwrite defaults.
 
 - Image tries to fail at build time as much as possible by running all sort of Checks.
 
-- Dockerfile is arranged for optimize builds, so that changed won't invalidate cache as much as possible.
-
-### Image Targets
-
-| **Target**   	| **Description**                                                                                    	|  **Size** 	|          **Stdout**          	|             **Targets**            	|
-|--------------	|----------------------------------------------------------------------------------------------------	|--------------	|:----------------------------:	|:-----------------------------------:	|
-| `nginx`      	| The Webserver, serves static content and replay others requests `php-fpm`                          	| 21 MB        	| Nginx Access and Error logs. 	|      `nginx-prod`, `nginx-dev`      	|
-| `fpm`        	| PHP_FPM, which will actually run the PHP Scripts for web requests.                                 	| 78 MB        	|  PHP Application logs only.  	|        `fpm-prod`, `fpm-dev`        	|
-| `supervisor` 	| Contains supervisor and source-code, for your consumers. (config at `docker/conf/supervisor/`)    	| 120 MB       	|    Stdout of all Commands.   	|           `supervisor-prod`           |
-| `cron`       	| Loads crontab and your app source-code, for your cron commands. (config at `docker/conf/crontab`) 	| 78 MB        	|     Stdout of all Crons.     	|              `cron-prod`            	|
-
-> All Images are **Alpine** based.  Official PHP-Alpine-Cli image size is 79.4MB. 
-
-> Size stated above are calculated excluding source code and vendor directory. 
+- Dockerfile is arranged for optimize prod builds, so that changes won't invalidate cache as much as possible.
 
 -----
 
@@ -71,27 +58,25 @@ You should copy this repository`Dockerfile`, `docker` Directory, `Makefile`, and
 
 # Setup
 
-### Get Template
-#### 1. Generate Repo from this Template
+#### 1. Add Template to your repo.
 
 1. Download This Repository
 2. Copy `Dockerfile`, `docker` Directory, `Makefile`, and `.dockerignore` Into your Symfony Application Repository.
-3. Modify `Dockerfile` to your app needs, and add your app needed PHP Extensions and Required Packages.
-4. Situational:
-    - If you will use `Makefile` and `Docker-Compose`: go to `docker/.composer/.env` and modify `SERVER_NAME` to your app's name.
-    - If you will expose SSL port to Production: Mount your signed certificates `server.crt` & `server.key` to `/etc/nginx/ssl`.
-      Also make sure `SERVER_NAME` build ARG matches Certificate's **Common Name**.
-5. run `make up` for development or `make deploy` for production. 
 
 OR
 
 <a href="https://github.com/sherifabdlnaby/symdocker/generate">
 <img src="https://user-images.githubusercontent.com/16992394/65464461-20c95880-de5a-11e9-9bf0-fc79d125b99e.png" alt="create repository from template"></a>
 
-<p> <small>And start from step 3..</small> </p>
+#### 2. Start
+1. Modify `Dockerfile` to your app needs, and add your app needed PHP Extensions and Required Packages.
+2. Go to `docker/.composer/.env` and modify `SERVER_NAME` to your app's name.
+3. Run `make up` for development or `make deploy` for production. 
+
+> Makefile is just a wrapper over docker-compose commands.
 
       
-# Building Image
+# Building and Extending Image 
 
 1. The image is to be used as a base for your Symfony application image, you should modify its Dockerfile to your needs.
 
@@ -114,6 +99,19 @@ However in an environment where CI/CD pipelines will build the image, they will 
 | `APP_ENV`   | App Environment | - `prod` for Production image</br> - `dev` for Development image     |
 | `APP_DEBUG` | Enable Debug    | - `0` for Production image</br>- `1` for Development image           |
 
+### Image Targets
+
+| **Target**   	| **Description**                                                                                    	|  **Size** 	|          **Stdout**          	|             **Targets**            	|
+|--------------	|----------------------------------------------------------------------------------------------------	|--------------	|:----------------------------:	|:-----------------------------------:	|
+| `nginx`      	| The Webserver, serves static content and replay others requests `php-fpm`                          	| 21 MB        	| Nginx Access and Error logs. 	|      `nginx-prod`, `nginx-dev`      	|
+| `fpm`        	| PHP_FPM, which will actually run the PHP Scripts for web requests.                                 	| 78 MB        	|  PHP Application logs only.  	|        `fpm-prod`, `fpm-dev`        	|
+| `supervisor` 	| Contains supervisor and source-code, for your consumers. (config at `docker/conf/supervisor/`)    	| 120 MB       	|    Stdout of all Commands.   	|           `supervisor-prod`           |
+| `cron`       	| Loads crontab and your app source-code, for your cron commands. (config at `docker/conf/crontab`) 	| 78 MB        	|     Stdout of all Crons.     	|              `cron-prod`            	|
+
+> All Images are **Alpine** based.  Official PHP-Alpine-Cli image size is 79.4MB. 
+
+> Size stated above are calculated excluding source code and vendor directory. 
+
 ## Tips for building Image in different environments
 
 ### Production
@@ -127,7 +125,6 @@ However in an environment where CI/CD pipelines will build the image, they will 
 2. Expose container port `8080` and `443`. (or whatever you need actually)
 
 ----
-
 
 # Configuration
 
