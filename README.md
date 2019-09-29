@@ -37,15 +37,27 @@ You should copy this repository`Dockerfile`, `docker` Directory, `Makefile`, and
 
 ### Main Points 📜
 
-- **Production Images is a fully contained Image with source code and dependencies inside**, Development image is set up for mounting source code on runtime with hot-reload.
+- Multi-Container setup with `Nginx` & `PHP-FPM` communicating via TCP.
+
+- Production Images is **immutable** and **fully contained Image** with source code and dependencies inside, Development image is set up for mounting source code on runtime with hot-reload.
 
 - Image configuration is transparent, all configuration and default configurations that determine app behavior are present in the image directory.
 
-- Nginx **HTTP**, **HTTPS**, and **HTTP2** are pre-configured, for **HTTPS** it uses self-signed certificate generated at build-time. For production you'll need to mount your own signed certificates to `/etc/nginx/ssl` amd overwrite defaults.
+- Nginx is pre-configured with **HTTP**, **HTTPS**, and **HTTP2**. and uses self-signed certificate generated at build-time. For production you'll need to mount your own signed certificates to `/etc/nginx/ssl/server.(crt/key)`.
+
+- Image has set up **healthchecks** for `Nginx` and `PHP-FPM`, and you can add application logic healthcheck by adding it in `healthcheck.sh`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/healthcheck.sh).
 
 - Image tries to fail at build time as much as possible by running all sort of Checks.
 
 - Dockerfile is arranged for optimize prod builds, so that changes won't invalidate cache as much as possible.
+
+- Available a `Supervisord` and `Crond` image variant for your consumers and cron commands.
+
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/16992394/65840420-40102c00-e319-11e9-952b-6e1267661c29.png">
+</p>
+
 
 -----
 
@@ -119,7 +131,7 @@ However in an environment where CI/CD pipelines will build the image, they will 
 ### Production
 1. For SSL: Mount your signed certificates as secrets to `/etc/nginx/ssl/server.key` & `/etc/nginx/ssl/server.crt`
 2. Make sure build argument `SERVER_NAME` matches certificate's **common name**.
-2. Expose container port `80` and `443`.
+2. Expose container port `80` and `443`.    
 
 > By default, Image has a generated self-signed certificate for SSL connections added at build time.
 ### Development
