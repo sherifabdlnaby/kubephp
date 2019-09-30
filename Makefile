@@ -1,4 +1,4 @@
-# Default make ENV is production. use make [target] ENV=dev for other Environments
+# Default make ENV is development. use make [target] ENV=prod for production
 ENV ?= dev
 
 .DEFAULT_GOAL:=help

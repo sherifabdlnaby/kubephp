@@ -43,13 +43,13 @@ You should copy this repository`Dockerfile`, `docker` Directory, `Makefile`, and
 
 - Image configuration is transparent, all configuration and default configurations that determine app behavior are present in the image directory.
 
-- Nginx is pre-configured with **HTTP**, **HTTPS**, and **HTTP2**. and uses self-signed certificate generated at build-time. For production you'll need to mount your own signed certificates to `/etc/nginx/ssl/server.(crt/key)`.
+- Nginx is pre-configured with **HTTP**, **HTTPS**, and **HTTP2**. and uses a self-signed certificate generated at build-time. For production, you'll need to mount your own signed certificates to `/etc/nginx/ssl/server.(crt/key)`.
 
-- Image has set up **healthchecks** for `Nginx` and `PHP-FPM`, and you can add application logic healthcheck by adding it in `healthcheck.sh`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/healthcheck.sh).
+- The image has set up **healthchecks** for `Nginx` and `PHP-FPM`, and you can add application logic healthcheck by adding it in `healthcheck.sh`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/healthcheck.sh).
 
 - Image tries to fail at build time as much as possible by running all sort of Checks.
 
-- Dockerfile is arranged for optimize prod builds, so that changes won't invalidate cache as much as possible.
+- Dockerfile is arranged for optimizing prod builds so that changes won't invalidate cache as much as possible.
 
 - Available a `Supervisord` and `Crond` image variant for your consumers and cron commands.
 
@@ -94,8 +94,8 @@ OR
 
 1. The image is to be used as a base for your Symfony application image, you should modify its Dockerfile to your needs.
 
-2. The image come with a handy _Makefile_ to build the image using Docker-Compose files, it's handy when manually building the image for development or in a not-orchestrated docker hosts.
-However in an environment where CI/CD pipelines will build the image, they will need to supply some build-time arguments for the image. (tho defaults exist.)
+2. The image comes with a handy _Makefile_ to build the image using Docker-Compose files, it's handy when manually building the image for development or in a not-orchestrated docker host.
+However, in an environment where CI/CD pipelines will build the image, they will need to supply some build-time arguments for the image. (tho defaults exist.)
 
 ### Build Time Arguments
 | **ARG**            | **Description**                                                                                                                                      | **Default** |
@@ -115,14 +115,14 @@ However in an environment where CI/CD pipelines will build the image, they will 
 
 ### Image Targets
 
-| **Target**   	| **Description**                                                                                    	|  **Size** 	|          **Stdout**          	|             **Targets**            	|
-|--------------	|----------------------------------------------------------------------------------------------------	|--------------	|:----------------------------:	|:-----------------------------------:	|
-| `nginx`      	| The Webserver, serves static content and replay others requests `php-fpm`                          	| 21 MB        	| Nginx Access and Error logs. 	|      `nginx-prod`, `nginx-dev`      	|
-| `fpm`        	| PHP_FPM, which will actually run the PHP Scripts for web requests.                                 	| 78 MB        	|  PHP Application logs only.  	|        `fpm-prod`, `fpm-dev`        	|
-| `supervisor` 	| Contains supervisor and source-code, for your consumers. (config at `docker/conf/supervisor/`)    	| 120 MB       	|    Stdout of all Commands.   	|           `supervisor-prod`           |
-| `cron`       	| Loads crontab and your app source-code, for your cron commands. (config at `docker/conf/crontab`) 	| 78 MB        	|     Stdout of all Crons.     	|              `cron-prod`            	|
+| **Target**       | **Description**                                                                                      |  **Size**    |          **Stdout**              |             **Targets**              |
+|--------------    |----------------------------------------------------------------------------------------------------  |--------------    |:----------------------------:    |:-----------------------------------: |
+| `nginx`          | The Webserver, serves static content and replay others requests `php-fpm`                            | 21 MB            | Nginx Access and Error logs.     |      `nginx-prod`, `nginx-dev`       |
+| `fpm`            | PHP_FPM, which will actually run the PHP Scripts for web requests.                                   | 78 MB            |  PHP Application logs only.      |        `fpm-prod`, `fpm-dev`         |
+| `supervisor`     | Contains supervisor and source-code, for your consumers. (config at `docker/conf/supervisor/`)       | 120 MB           |    Stdout of all Commands.       |           `supervisor-prod`           |
+| `cron`           | Loads crontab and your app source-code, for your cron commands. (config at `docker/conf/crontab`)    | 78 MB            |     Stdout of all Crons.         |              `cron-prod`             |
 
-> All Images are **Alpine** based.  Official PHP-Alpine-Cli image size is 79.4MB. 
+> All Images are **Alpine** based.  Official PHP-Alpine-CLI image size is 79.4MB. 
 
 > Size stated above are calculated excluding source code and vendor directory. 
 
@@ -154,10 +154,10 @@ Add Packages needed for PHP runtime in this section of the `Dockerfile`.
 ```Dockerfile
 ...
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
-RUN apk add --no-cache		\
+RUN apk add --no-cache    \
 #    # - Please define package version too ---
 #    # -----  Needed for Image----------------
-	fcgi tini \
+   fcgi tini \
 #    # -----  Needed for PHP -----------------
     <HERE>
 ...
@@ -197,7 +197,7 @@ Nginx is pre-configured with:
 
 Post Installation scripts should be configured in `composer.json` in the `post-install-cmd` [part](https://getcomposer.org/doc/articles/scripts.md#command-events).
 
-However, Sometimes, some packages has commands that need to be run on startup, that are not compatible with composer, provided in the image a shell script `post-deployment.sh`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/post-deployment.sh) that will be executed after deployment. 
+However, Sometimes, some packages have commands that need to be run on startup, that are not compatible with composer, provided in the image a shell script `post-deployment.sh`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/post-deployment.sh) that will be executed after deployment. 
 Special about this file that it comes loaded with all OS Environment variables **as well as defaults from `.env` and `.env.${APP_ENV}` files.** so it won't need a special treatment handling parameters.
 
 > It is still discouraged to be used if it's possible to run these commands using composer scripts.
@@ -214,9 +214,9 @@ If you have cron jobs, you can define them in `docker/conf/crontab`, which will 
 
 # Misc Notes
 - Your application [should log app logs to stdout.](https://stackoverflow.com/questions/38499825/symfony-logs-to-stdout-inside-docker-container). Read about [12factor/logs](https://12factor.net/logs) 
-- By default, `php-fpm` access & error logs are disabled as they're mirrored on `nginx`, this is so that `php-fpm` image will contains **only** application logs written by PHP.
+- By default, `php-fpm` access & error logs are disabled as they're mirrored on `nginx`, this is so that `php-fpm` image will contain **only** application logs written by PHP.
 - During Build, Image will run `composer dump-autoload` and `composer dump-env` to optimize for performance.
-- In **production**, Image contains source-code, however you must sync both `php-fpm` and `nginx` images so that they contain the same code.
+- In **production**, Image contains source-code, however, you must sync both `php-fpm` and `nginx` images so that they contain the same code.
 
 # License 
 [MIT License](https://raw.githubusercontent.com/sherifabdlnaby/symdocker/blob/master/LICENSE)
