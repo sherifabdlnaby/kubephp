@@ -84,31 +84,6 @@ ENTRYPOINT ["docker-base-entrypoint"]
 CMD ["php-fpm"]
 
 # ======================================================================================================================
-#                                                  --- Vendor ---
-# ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
-# ======================================================================================================================
-
-FROM composer as vendor
-
-ARG PHP_VERSION
-ARG COMPOSER_AUTH
-# A Json Object with Bitbucket or Github token to clone private Repos with composer
-# Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
-ENV COMPOSER_AUTH $COMPOSER_AUTH
-
-# Copy Dependencies files
-COPY composer.json composer.json
-COPY composer.lock composer.lock
-
-# Set PHP Version of the Image && create the vendor directory
-RUN composer config platform.php ${PHP_VERSION}
-
-# Install Dependeinces
-## * Platform requirments are checked at the next image steps.
-## * Scripts and Autoload are run at the next image steps.
-RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --prefer-dist
-
-# ======================================================================================================================
 #                                                  --- NGINX ---
 # ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
 # ======================================================================================================================
@@ -141,6 +116,31 @@ HEALTHCHECK CMD ["docker-nginx-healthcheck"]
 
 # Add Entrypoint
 ENTRYPOINT ["docker-nginx-entrypoint"]
+
+# ======================================================================================================================
+#                                                  --- Vendor ---
+# ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
+# ======================================================================================================================
+
+FROM composer as vendor
+
+ARG PHP_VERSION
+ARG COMPOSER_AUTH
+# A Json Object with Bitbucket or Github token to clone private Repos with composer
+# Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
+ENV COMPOSER_AUTH $COMPOSER_AUTH
+
+# Copy Dependencies files
+COPY composer.json composer.json
+COPY composer.lock composer.lock
+
+# Set PHP Version of the Image && create the vendor directory
+RUN composer config platform.php ${PHP_VERSION}
+
+# Install Dependeinces
+## * Platform requirments are checked at the next image steps.
+## * Scripts and Autoload are run at the next image steps.
+RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --prefer-dist
 
 # ======================================================================================================================
 # ===========================================  PRODUCTION FINAL STAGES  ================================================
