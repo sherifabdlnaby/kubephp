@@ -1,2 +1,0 @@
-# Add Cron Here
-# * * * * * /var/www/app/bin/console notifications:send

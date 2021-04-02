@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+# Envsubset all files and only replace exported envs.
+for f in $(find /etc/nginx/ -name "*.conf"); do cat $f | envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" > "$f"; done
+
+# Validate & Test nginx config (retry to wait if fpm host hasn't started yet)
+
+set +e
+for i in $(seq 1 5); do
+    nginx -t -q
+    s=$?
+    if [[ $s -eq 0 ]]
+    then
+        break
+    fi
+    sleep 3
+done
+if [[ -$s -ne 0 ]]
+then
+    echo "Failed to validate nginx configuration"
+    exit 1;
+fi
+set -e
+
+exec nginx -g 'daemon off;'

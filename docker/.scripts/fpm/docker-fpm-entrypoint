@@ -1,8 +1,0 @@
-#!/bin/sh
-set -eu
-
-# Run base init entrypoint
-docker-base-entrypoint
-
-# Run PHP-FPM
-exec "php-fpm"

@@ -1,0 +1,23 @@
+version: '3.7'
+
+services:
+  app:
+    build:
+      context: .
+      target: app
+      args:
+        # To authenticate to private registry either use username / password, or Oauth key/secret / etc
+        # Please add Composer Auth JSON Object
+        COMPOSER_AUTH: "{}"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    environment:
+      # The Hostname for the FPM (needs to match the hostname for the `app`)
+      PHP_FPM_HOST: app
+    ports:
+    - 80:80
