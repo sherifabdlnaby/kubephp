@@ -4,23 +4,11 @@ set -eu
 # Envsubset all files and only replace exported envs.
 for f in $(find /etc/nginx/ -name "*.conf"); do cat $f | envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" > "$f"; done
 
-# Validate & Test nginx config (retry to wait if fpm host hasn't started yet)
+# Give FPM some time to warmup
+sleep 1
 
-set +e
-for i in $(seq 1 5); do
-    nginx -t -q
-    s=$?
-    if [[ $s -eq 0 ]]
-    then
-        break
-    fi
-    sleep 3
-done
-if [[ -$s -ne 0 ]]
-then
-    echo "Failed to validate nginx configuration"
-    exit 1;
-fi
-set -e
+# Validate & Test nginx config (retry to wait if fpm host hasn't started yet)
+timeout 60 sh -c 'until nginx -t -q; do sleep 1; done'
+timeout 60 sh -c 'until nc -z $0 $1; do sleep 1; done' $PHP_FPM_HOST $PHP_FPM_PORT
 
 exec nginx -g 'daemon off;'

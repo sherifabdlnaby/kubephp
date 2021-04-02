@@ -15,10 +15,9 @@ set -eu
   # Dev entry point does steps that is done in prod image, only that it does it at
   # container runtime not image build time, as dev container expects the code to be
   # mounted.
-
   # Install Dependencies
   echo "► Running Composer Install... "
-  error=`composer install --prefer-dist --no-scripts --no-interaction 2>&1`  \
+  error=$(composer install --no-progress --prefer-dist --no-scripts --no-interaction 2>&1)  \
     || if [ $? -ne 0 ]; then printf "%s \nerror running composer install (exit code: $?)" "$error"; exit 1; fi
   echo "✔ Finished Composer Install."
 )
