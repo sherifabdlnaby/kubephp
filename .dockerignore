@@ -1,5 +1,4 @@
 .git
-.git
 .gitattributes
 .gitignore
 .dockerignore
@@ -7,8 +6,6 @@
 README.md
 CHANGELOG.md
 docker-compose*.yml
-docker/docker-compose*.yml
-docker/compose/*
 Dockerfile
 Makefile
 vendor
@@ -17,7 +14,6 @@ var
 var/*
 .DS_Store
 .vscode/
-tests/
 fixtures/
 coverage/
 coverage.xml
