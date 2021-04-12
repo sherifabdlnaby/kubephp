@@ -93,7 +93,7 @@ RUN rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/* && \
  	adduser -u 82 -D -S -G www-data www-data
 
 COPY docker/nginx/docker-* /usr/local/bin/
-COPY docker/nginx/conf/ /etc/nginx/
+COPY docker/nginx/ /etc/nginx/
 RUN chmod +x /usr/local/bin/docker-*
 
 # The PHP-FPM Host
@@ -102,8 +102,7 @@ ENV PHP_FPM_HOST "localhost"
 ENV PHP_FPM_PORT "9000"
 
 # Allow Nginx to run as non-root.
-RUN touch /var/run/nginx.pid && \
-  chown -R www-data:www-data /var/run/nginx.pid /var/cache/nginx /etc/nginx/ /etc/nginx/conf.d/
+RUN chown -R www-data:www-data /var/cache/nginx /etc/nginx/ /etc/nginx/conf.d/
 
 # Change to non root user
 USER www-data

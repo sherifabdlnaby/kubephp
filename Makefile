@@ -1,51 +1,52 @@
-# Default make ENV is development. use make [target] ENV=prod for production
-ENV ?= dev
-
 .DEFAULT_GOAL:=help
 
-ifeq ($(filter $(ENV),dev prod),)
-$(error The ENV variable is invalid. must be one of <prod|dev> )
-endif
-
-COMPOSE_FILES_PATH := -f docker-compose.yml -f ./$(ENV).yml
-COMPOSE_PREFIX_CMD := cd docker/.compose && COMPOSE_DOCKER_CLI_BUILD=1
+COMPOSE_PREFIX_CMD := DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 
 
 # --------------------------
 
 .PHONY: build deploy start stop logs restart shell up rm help
 
 deploy:			## Deploy Prod Image (alias for `make up ENV=prod`)
-	@make up ENV=prod
+	${COMPOSE_PREFIX_CMD} docker-compose -f docker-compose.prod.yml up --build -d
 
-up:				## Start service, rebuild if necessary
-	${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) up --build -d
+up:				## Start service
+	${COMPOSE_PREFIX_CMD} docker-compose up -d
+
+build-up:       ## Start service, rebuild if necessary
+	${COMPOSE_PREFIX_CMD} docker-compose up --build -d
 
 build:			## Build The Image
-	${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) build
+	${COMPOSE_PREFIX_CMD} docker-compose build
 
 down:			## Down service and do clean up
-	${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) down
+	${COMPOSE_PREFIX_CMD} docker-compose down
 
 start:			## Start Container
-	${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) start
+	${COMPOSE_PREFIX_CMD} docker-compose start
 
 stop:			## Stop Container
-	${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) stop
+	${COMPOSE_PREFIX_CMD} docker-compose stop
 
 logs:			## Tail container logs with -n 1000
-	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) logs --follow --tail=1000
+	@${COMPOSE_PREFIX_CMD} docker-compose logs --follow --tail=100
 
 images:			## Show Image created by this Makefile (or Docker-compose in docker)
-	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) images
+	@${COMPOSE_PREFIX_CMD} docker-compose images
+
+ps:			## Show Containers Running
+	@${COMPOSE_PREFIX_CMD} docker-compose ps
 
 shell:			## Enter container shell
-	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) exec app /bin/sh
+	@${COMPOSE_PREFIX_CMD} docker-compose exec app /bin/bash
+
+shell-root:			## Enter container shell
+	@${COMPOSE_PREFIX_CMD} docker-compose exec -u root app /bin/bash
 
 restart:		## Restart container
-	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) restart
+	@${COMPOSE_PREFIX_CMD} docker-compose restart
 
 rm:				## Remove current container
-	@${COMPOSE_PREFIX_CMD} docker-compose $(COMPOSE_FILES_PATH) rm -f
+	@${COMPOSE_PREFIX_CMD} docker-compose rm -f
 
 help:       	## Show this help.
 	@echo "Make Application Docker Images and Containers using Docker-Compose files in 'docker' Dir."
