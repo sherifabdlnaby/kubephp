@@ -58,10 +58,12 @@ RUN rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
 
 # Copy PHP-FPM config, scripts, and validate syntax.
 COPY docker/fpm/*.conf          /usr/local/etc/php-fpm.d/
-COPY docker/fpm/docker-*	    /usr/local/bin/
-COPY docker/docker-base-*       /usr/local/bin/
-COPY docker/docker-healthcheck  /usr/local/bin/docker-healthcheck
-RUN  chmod +x /usr/local/bin/docker-*
+COPY docker/fpm/fpm-healthcheck /usr/local/bin/
+COPY docker/entrypoints/base-*  /usr/local/bin/
+COPY docker/healthcheck         /usr/local/bin/
+COPY docker/post-install        /usr/local/bin/
+
+RUN  chmod +x /usr/local/bin/base-* /usr/local/bin/*healthcheck /usr/local/bin/post-install
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
@@ -76,11 +78,11 @@ ENV APP_DEBUG 0
 
 # ---------------------------------------------------- HEALTH ----------------------------------------------------------
 
-HEALTHCHECK CMD ["docker-healthcheck"]
+HEALTHCHECK CMD ["healthcheck"]
 
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
-ENTRYPOINT ["docker-base-entrypoint"]
+ENTRYPOINT ["base-entrypoint"]
 CMD ["php-fpm"]
 
 # ======================================================================================================================
@@ -92,9 +94,9 @@ FROM nginx:${NGINX_VERSION}-alpine AS nginx
 RUN rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/* && \
  	adduser -u 82 -D -S -G www-data www-data
 
-COPY docker/nginx/docker-* /usr/local/bin/
-COPY docker/nginx/ /etc/nginx/
-RUN chmod +x /usr/local/bin/docker-*
+COPY docker/nginx/nginx-*   /usr/local/bin/
+COPY docker/nginx/          /etc/nginx/
+RUN chmod +x /usr/local/bin/nginx-*
 
 # The PHP-FPM Host
 ## Localhost is the sensible default assuming image run on a k8S Pod
@@ -111,10 +113,10 @@ USER www-data
 EXPOSE 8080
 
 # Add Healthcheck
-HEALTHCHECK CMD ["docker-nginx-healthcheck"]
+HEALTHCHECK CMD ["nginx-healthcheck"]
 
 # Add Entrypoint
-ENTRYPOINT ["docker-nginx-entrypoint"]
+ENTRYPOINT ["nginx-entrypoint"]
 
 # ======================================================================================================================
 #                                                  --- Vendor ---
@@ -162,8 +164,8 @@ COPY --from=vendor /app/vendor /var/www/app/vendor
 COPY . .
 
 # Copy Entrypoint
-COPY docker/docker-prod-*       /usr/local/bin/
-RUN  chmod +x /usr/local/bin/docker-prod-* && \
+COPY docker/entrypoints/prod-*  /usr/local/bin/
+RUN  chmod +x /usr/local/bin/prod-* && \
      chown -R www-data:www-data /var/www/app/vendor && chown www-data:www-data /var/www/app
 
 # Run as non-root
@@ -178,7 +180,7 @@ RUN composer dump-autoload -n --optimize --no-scripts --no-dev && composer check
 # Validate FPM config
 RUN php-fpm -t
 
-ENTRYPOINT ["docker-prod-entrypoint"]
+ENTRYPOINT ["prod-entrypoint"]
 CMD ["php-fpm"]
 
 # ======================================================================================================================
@@ -199,14 +201,16 @@ ENV COMPOSER_AUTH $COMPOSER_AUTH
 ENV APP_ENV dev
 ENV APP_DEBUG 1
 
-# --------------------------------------------------- Packages ---------------------------------------------------------
+# Packages
 
 # Switch Back to root to install stuff
 USER root
 
 RUN apt-get update && apt-get -y --no-install-recommends install \
     # Needed for Dev luxery when you shell inside the container for debugging
-    curl    \
+    curl     \
+    htop     \
+    dnsutils \
     ## For Composer cloning in dev env
     unzip     \
     && apt-get autoremove --purge -y && apt-get clean \
@@ -223,12 +227,12 @@ COPY docker/php/dev-*   $PHP_INI_DIR/conf.d/
 # ------------------------------------------------- Entry Point --------------------------------------------------------
 
 # Copy Entrypoint
-COPY docker/docker-dev-*       /usr/local/bin/
-RUN  chmod +x /usr/local/bin/docker-dev-*
+COPY docker/entrypoints/dev-*   /usr/local/bin/
+RUN  chmod +x /usr/local/bin/dev-*
 
 USER www-data
 
 # Validate FPM config
 RUN php-fpm -t
-ENTRYPOINT ["docker-dev-entrypoint"]
+ENTRYPOINT ["dev-entrypoint"]
 CMD ["php-fpm"]

@@ -1,12 +1,10 @@
 #!/bin/sh
 set -eu
 
-# ----------------------------------------------------------------------------------------------------------------------
-
 # Run Inside a subshell to not expose .env to entrypoint.
 (
   # Load .env and .env.<APP_ENV> into script (won't overwrite OS env vars.)
-  set -a
+  set -aeu
       env_overwrite=./.env.${APP_ENV-prod}
       export -p >> /tmp/envsrc && if [ -f "./.env" ]; then . ./.env; fi && if [ -f "${env_overwrite}" ]; then . $env_overwrite; fi && . /tmp/envsrc \
       && rm /tmp/envsrc && unset env_overwrite
@@ -14,10 +12,15 @@ set -eu
 
   # ----------------------------------------------------------------------------------------------------------------------
 
-  # Add Prod Specific Entrypoints Here.
-
+  # Dev entry point does steps that is done in prod image, only that it does it at
+  # container runtime not image build time, as dev container expects the code to be
+  # mounted.
+  # Install Dependencies
+  echo "► Running Composer Install... "
+  error=$(composer install --no-progress --prefer-dist --no-scripts --no-interaction 2>&1)  \
+    || if [ $? -ne 0 ]; then printf "%s \nerror running composer install (exit code: $?)" "$error"; exit 1; fi
+  echo "✔ Finished Composer Install."
 )
 
-
 # Run Entrypoint and pass CMD to it (Don't forget exec)
-exec docker-base-entrypoint "${@}"
+exec base-entrypoint "${@}"

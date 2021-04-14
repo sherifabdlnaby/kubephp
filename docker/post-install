@@ -1,8 +1,9 @@
 #!/bin/sh
 set -eu
 
-# Scripts that will run after deployment and composer install.
-# Should only used for ad-hoc commands, It's recommended to use composer scripts if possible.
+# Scripts that will run composer install and composer post install command.
+# And before running the container main command/process.
+
 # This script working dir is application's directory, and all ENV variables from .env and OS are available here
 # using ${ENV_NAME} with defaults taken from .env and .env.<env>
 #
@@ -11,3 +12,5 @@ set -eu
 
 
 # Put Custom Ad-hoc scripts below:
+
+echo "hello-world" >> /tmp/iran.txt

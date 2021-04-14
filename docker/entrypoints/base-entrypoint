@@ -21,10 +21,10 @@ set -eu
       echo "✔ Successful"
   fi
 
-  # Run custom ad-hoc post-deployment script
-  echo "► Running custom post deployment script..."
-  error=$(docker-base-post-deployment 2>&1)  \
-  || if [ $? -ne 0 ]; then printf "%s \nerror running post-deployment script: " "$error"; exit 1; fi
+  # Run custom ad-hoc post-install script
+  echo "► Running custom post-install script..."
+  error=$(post-install 2>&1)  \
+  || if [ $? -ne 0 ]; then printf "%s \nerror running post-install.sh script: " "$error"; exit 1; fi
   echo "✔ Successful"
 
 )
