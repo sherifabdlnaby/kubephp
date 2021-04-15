@@ -6,8 +6,9 @@ set -eu
   # Load .env and .env.<APP_ENV> into script (won't overwrite OS env vars.)
   set -a
       env_overwrite=./.env.${APP_ENV-prod}
-      export -p >> /tmp/envsrc && if [ -f "./.env" ]; then . ./.env; fi && if [ -f "${env_overwrite}" ]; then . $env_overwrite; fi && . /tmp/envsrc \
-      && rm /tmp/envsrc && unset env_overwrite
+      env_local_overwrite=./.env.${APP_ENV-prod}.local
+      export -p >> /tmp/envsrc && if [ -f "./.env" ]; then . ./.env; fi && if [ -f "${env_overwrite}" ]; then . $env_overwrite; fi && if [ -f "${env_local_overwrite}" ]; then . $env_local_overwrite; fi && . /tmp/envsrc \
+      && rm /tmp/envsrc && unset env_overwrite && unset env_local_overwrite
   set +a
 
   # --------------------------------------------------------------------------------------------------------------------
