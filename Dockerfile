@@ -23,8 +23,8 @@ LABEL maintainer="sherifabdlnaby@gmail.com"
 
 RUN apt-get update && apt-get -y --no-install-recommends install \
     # Needed for Image
-    libfcgi-bin                 \
-    tini                        \
+    libfcgi-bin=2.4.0-10               \
+    tini=0.18.0-1                      \
     # Needed for PHP
 
     # Clean metadata and clear caches
@@ -44,25 +44,29 @@ RUN docker-php-ext-install \
     # Pecl Extentions
 #   EX: RUN pecl install memcached && docker-php-ext-enable memcached
 
-# ------------------------------------------------------ PHP -----------------------------------------------------------
+# ------------------------------------------------ PHP Configuration ---------------------------------------------------
 
-# Add Basic Config
+# Add Base Config
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
-COPY docker/php/base-*   $PHP_INI_DIR/conf.d/
 
-# ------------------------------------------------------ FPM -----------------------------------------------------------
+# Add in Custom Config
+COPY docker/php/base-*   $PHP_INI_DIR/conf.d
 
-# Clean bundled basic config & create composer directories (since we run as non-root later)
+# ---------------------------------------------- PHP FPM Configuration -------------------------------------------------
+
+# Clean bundled config & create composer directories (since we run as non-root later)
 RUN rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
     mkdir -p /var/www/.composer /var/www/app && chown -R www-data:www-data /var/www/ /var/www/app
 
 # Copy scripts and PHP-FPM config
 COPY docker/fpm/*.conf          /usr/local/etc/php-fpm.d/
+
+# --------------------------------------------------- Scripts ----------------------------------------------------------
+
 COPY docker/fpm/fpm-healthcheck /usr/local/bin/
 COPY docker/entrypoints/base-*  /usr/local/bin/
 COPY docker/healthcheck         /usr/local/bin/
 COPY docker/post-install        /usr/local/bin/
-
 RUN  chmod +x /usr/local/bin/base-* /usr/local/bin/*healthcheck /usr/local/bin/post-install
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
@@ -75,6 +79,12 @@ WORKDIR /var/www/app
 ENV APP_ENV prod
 ENV APP_DEBUG 0
 
+# Run as non-root
+USER www-data
+
+# Validate FPM config
+RUN php-fpm -t
+
 # ---------------------------------------------------- HEALTH ----------------------------------------------------------
 
 HEALTHCHECK CMD ["healthcheck"]
@@ -83,39 +93,6 @@ HEALTHCHECK CMD ["healthcheck"]
 
 ENTRYPOINT ["base-entrypoint"]
 CMD ["php-fpm"]
-
-# ======================================================================================================================
-#                                                  --- NGINX ---
-# ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
-# ======================================================================================================================
-FROM nginx:${NGINX_VERSION}-alpine AS nginx
-
-RUN rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/* && \
- 	adduser -u 82 -D -S -G www-data www-data
-
-COPY docker/nginx/nginx-*   /usr/local/bin/
-COPY docker/nginx/          /etc/nginx/
-RUN chmod +x /usr/local/bin/nginx-*
-
-# The PHP-FPM Host
-## Localhost is the sensible default assuming image run on a k8S Pod
-ENV PHP_FPM_HOST "localhost"
-ENV PHP_FPM_PORT "9000"
-
-# Allow Nginx to run as non-root.
-RUN chown -R www-data:www-data /var/cache/nginx /etc/nginx/ /etc/nginx/conf.d/
-
-# Change to non root user
-USER www-data
-
-# For Documentation
-EXPOSE 8080
-
-# Add Healthcheck
-HEALTHCHECK CMD ["nginx-healthcheck"]
-
-# Add Entrypoint
-ENTRYPOINT ["nginx-entrypoint"]
 
 # ======================================================================================================================
 #                                                  --- Vendor ---
@@ -134,7 +111,7 @@ ENV COMPOSER_AUTH $COMPOSER_AUTH
 COPY composer.json composer.json
 COPY composer.lock composer.lock
 
-# Set PHP Version of the Image && create the vendor directory
+# Set PHP Version of the Image
 RUN composer config platform.php ${PHP_VERSION}
 
 # Install Dependeinces
@@ -147,14 +124,18 @@ RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-s
 #                                                   --- PROD ---
 # ======================================================================================================================
 
-# ----------------------------------------------------- NGINX ----------------------------------------------------------
-FROM nginx AS web
-
-# Copy Public folder + Assets that's going to be served from Nginx
-COPY public /var/www/app/public
-
-# ------------------------------------------------------ FPM -----------------------------------------------------------
 FROM base AS app
+
+# Switch to root to add stuff
+USER root
+
+# Copy Prod Entrypoint && PHP Config
+COPY docker/entrypoints/prod-*  /usr/local/bin/
+COPY docker/php/prod-*   $PHP_INI_DIR/conf.d/
+RUN  chmod +x /usr/local/bin/prod-*
+
+# Run as non-root
+USER www-data
 
 # Copy Vendor
 COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
@@ -162,43 +143,27 @@ COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
 # Copy App Code
 COPY --chown=www-data:www-data . .
 
-# Copy Entrypoint
-COPY docker/entrypoints/prod-*  /usr/local/bin/
-RUN  chmod +x /usr/local/bin/prod-*
-
-# Run as non-root
-USER www-data
-
 # 1. Dump optimzed autoload for vendor and app classes.
 # 2. --no-scripts as scripts are run on runtime via entrypoint.
 # 3. checks that PHP and extensions versions match the platform requirements of the installed packages.
-RUN composer dump-autoload -n --optimize --no-scripts --no-dev && composer check-platform-reqs
+RUN composer dump-autoload -n --optimize --no-scripts --no-dev --classmap-authoritative && composer check-platform-reqs
 
-# Validate FPM config
-RUN php-fpm -t
 
 ENTRYPOINT ["prod-entrypoint"]
 CMD ["php-fpm"]
 
 # ======================================================================================================================
-# ===========================================  DEVELOPMENT FINAL STAGES  ===============================================
+# ==============================================  DEVELOPMENT IMAGE  ===================================================
 #                                                   --- DEV ---
 # ======================================================================================================================
 
-# ----------------------------------------------------- NGINX ----------------------------------------------------------
-FROM nginx AS web-dev
-## Place holder to have a consistent naming.
-
-# ------------------------------------------------------ FPM -----------------------------------------------------------
 FROM base as app-dev
 
-ARG COMPOSER_AUTH
 ARG XDEBUG_VERSION
-ENV COMPOSER_AUTH $COMPOSER_AUTH
 ENV APP_ENV dev
 ENV APP_DEBUG 1
 
-# Switch Back to root to install stuff
+# Switch to root to install stuff
 USER root
 
 # Packages
@@ -207,8 +172,6 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
     curl     \
     htop     \
     dnsutils \
-    ## For Composer cloning in dev env
-    unzip     \
     && apt-get autoremove --purge -y && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -227,6 +190,7 @@ COPY docker/php/dev-*   $PHP_INI_DIR/conf.d/
 COPY docker/entrypoints/dev-*   /usr/local/bin/
 RUN  chmod +x /usr/local/bin/dev-*
 
+# Run as non-root
 USER www-data
 
 # Copy Vendor And Generate Autoload
@@ -235,9 +199,54 @@ COPY --chown=www-data:www-data composer.json composer.json
 COPY --chown=www-data:www-data composer.lock composer.lock
 RUN composer dump-autoload -n --no-scripts && composer check-platform-reqs
 
-# Validate FPM config
-RUN php-fpm -t
-
 ENTRYPOINT ["dev-entrypoint"]
 
 CMD ["php-fpm"]
+
+
+# ======================================================================================================================
+# ======================================================================================================================
+#                                                  --- NGINX ---
+# ======================================================================================================================
+# ======================================================================================================================
+FROM nginx:${NGINX_VERSION}-alpine AS nginx
+
+RUN rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/*
+
+COPY docker/nginx/nginx-*   /usr/local/bin/
+COPY docker/nginx/          /etc/nginx/
+RUN chmod +x /usr/local/bin/nginx-*
+
+# The PHP-FPM Host
+## Localhost is the sensible default assuming image run on a k8S Pod
+ENV PHP_FPM_HOST "localhost"
+ENV PHP_FPM_PORT "9000"
+
+# Allow Nginx to run as non-root.
+RUN chown -R nginx:nginx /var/cache/nginx /etc/nginx/ /etc/nginx/conf.d/
+
+# Change to non root user
+USER nginx
+
+# For Documentation
+EXPOSE 8080
+
+# Add Healthcheck
+HEALTHCHECK CMD ["nginx-healthcheck"]
+
+# Add Entrypoint
+ENTRYPOINT ["nginx-entrypoint"]
+
+# ======================================================================================================================
+#                                                 --- NGINX PROD ---
+# ======================================================================================================================
+
+FROM nginx AS web
+
+# Copy Public folder + Assets that's going to be served from Nginx
+COPY public /var/www/app/public
+
+
+# ----------------------------------------------------- NGINX ----------------------------------------------------------
+FROM nginx AS web-dev
+## Place holder to have a consistent naming.
