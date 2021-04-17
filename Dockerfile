@@ -54,9 +54,9 @@ COPY docker/php/base-*   $PHP_INI_DIR/conf.d/
 
 # Clean bundled basic config & create composer directories (since we run as non-root later)
 RUN rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
-    mkdir -p /var/www/.composer /var/www/app && chown -R www-data:www-data /var/www/
+    mkdir -p /var/www/.composer /var/www/app && chown -R www-data:www-data /var/www/ /var/www/app
 
-# Copy PHP-FPM config, scripts, and validate syntax.
+# Copy scripts and PHP-FPM config
 COPY docker/fpm/*.conf          /usr/local/etc/php-fpm.d/
 COPY docker/fpm/fpm-healthcheck /usr/local/bin/
 COPY docker/entrypoints/base-*  /usr/local/bin/
@@ -67,7 +67,6 @@ RUN  chmod +x /usr/local/bin/base-* /usr/local/bin/*healthcheck /usr/local/bin/p
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
-ENV COMPOSER_ALLOW_SUPERUSER 1
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 # ----------------------------------------------------- MISC -----------------------------------------------------------
@@ -158,22 +157,20 @@ COPY public /var/www/app/public
 FROM base AS app
 
 # Copy Vendor
-COPY --from=vendor /app/vendor /var/www/app/vendor
+COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
 
 # Copy App Code
-COPY . .
+COPY --chown=www-data:www-data . .
 
 # Copy Entrypoint
 COPY docker/entrypoints/prod-*  /usr/local/bin/
-RUN  chmod +x /usr/local/bin/prod-* && \
-     chown -R www-data:www-data /var/www/app/vendor && chown www-data:www-data /var/www/app
+RUN  chmod +x /usr/local/bin/prod-*
 
 # Run as non-root
 USER www-data
 
 # 1. Dump optimzed autoload for vendor and app classes.
-# 2. Dump env from .env and .env.prod to .env.local.php for env variables defaults and optimzed loading.
-# 	 --no-scripts as scripts are run on runtime via entrypoint.
+# 2. --no-scripts as scripts are run on runtime via entrypoint.
 # 3. checks that PHP and extensions versions match the platform requirements of the installed packages.
 RUN composer dump-autoload -n --optimize --no-scripts --no-dev && composer check-platform-reqs
 
@@ -201,11 +198,10 @@ ENV COMPOSER_AUTH $COMPOSER_AUTH
 ENV APP_ENV dev
 ENV APP_DEBUG 1
 
-# Packages
-
 # Switch Back to root to install stuff
 USER root
 
+# Packages
 RUN apt-get update && apt-get -y --no-install-recommends install \
     # Needed for Dev luxery when you shell inside the container for debugging
     curl     \
@@ -215,6 +211,7 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
     unzip     \
     && apt-get autoremove --purge -y && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 # ---------------------------------------------------- Xdebug ----------------------------------------------------------
 
 RUN pecl install xdebug-${XDEBUG_VERSION} && docker-php-ext-enable xdebug
@@ -232,7 +229,15 @@ RUN  chmod +x /usr/local/bin/dev-*
 
 USER www-data
 
+# Copy Vendor And Generate Autoload
+COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
+COPY --chown=www-data:www-data composer.json composer.json
+COPY --chown=www-data:www-data composer.lock composer.lock
+RUN composer dump-autoload -n --no-scripts && composer check-platform-reqs
+
 # Validate FPM config
 RUN php-fpm -t
+
 ENTRYPOINT ["dev-entrypoint"]
+
 CMD ["php-fpm"]

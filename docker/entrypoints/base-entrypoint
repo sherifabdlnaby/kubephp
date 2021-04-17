@@ -1,34 +1,31 @@
 #!/bin/sh
 set -eu
 
-# Run Inside a subshell to not expose .env to entrypoint.
-(
-  # Load .env and .env.<APP_ENV> into script (won't overwrite OS env vars.)
-  set -a
-      env_overwrite=./.env.${APP_ENV-prod}
-      env_local_overwrite=./.env.${APP_ENV-prod}.local
-      export -p >> /tmp/envsrc && if [ -f "./.env" ]; then . ./.env; fi && if [ -f "${env_overwrite}" ]; then . $env_overwrite; fi && if [ -f "${env_local_overwrite}" ]; then . $env_local_overwrite; fi && . /tmp/envsrc \
-      && rm /tmp/envsrc && unset env_overwrite && unset env_local_overwrite
-  set +a
 
-  # --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 
-  # !-- We want to only print in logs if something wrong happened, hence how below code is written. --!
-  if (composer run-script -l 2> /dev/null | command grep --silent "post-install-cmd" > /dev/null)
-  then
-      echo "► Running composer's post-install-cmd..."
-      error=$(composer run-script --no-interaction post-install-cmd 2>&1)  \
-      || if [ $? -ne 0 ]; then printf "%s \nerror running composer post-install-cmd script: " "$error"; exit 1; fi
-      echo "✔ Successful"
-  fi
+# !-- We want to only print in logs if something wrong happened, hence how below code is written. --!
+if (composer run-script -l 2> /dev/null | command grep --silent "post-install-cmd" > /dev/null)
+then
+    echo "► Running composer's post-install-cmd..."
+    error=$(composer run-script --no-interaction post-install-cmd 2>&1)  \
+    || if [ $? -ne 0 ]; then printf "%s \nerror running composer post-install-cmd script: " "$error"; exit 1; fi
+    echo "✔ Successful"
+fi
 
-  # Run custom ad-hoc post-install script
-  echo "► Running custom post-install script..."
-  error=$(post-install 2>&1)  \
-  || if [ $? -ne 0 ]; then printf "%s \nerror running post-install.sh script: " "$error"; exit 1; fi
-  echo "✔ Successful"
+if (composer run-script -l 2> /dev/null | command grep --silent "post-autoload-dump" > /dev/null)
+then
+    echo "► Running composer's post-autoload-dump..."
+    error=$(composer run-script --no-interaction post-autoload-dump 2>&1)  \
+    || if [ $? -ne 0 ]; then printf "%s \nerror running composer post-autoload-dump script: " "$error"; exit 1; fi
+    echo "✔ Successful"
+fi
 
-)
+# Run custom ad-hoc post-install script
+echo "► Running custom post-install script..."
+error=$(post-install 2>&1)  \
+|| if [ $? -ne 0 ]; then printf "%s \nerror running post-install.sh script: " "$error"; exit 1; fi
+echo "✔ Successful"
 
 # ----------------------------------------------------------------------------------------------------------------------
 
