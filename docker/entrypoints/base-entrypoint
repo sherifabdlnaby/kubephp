@@ -2,29 +2,30 @@
 set -eu
 
 
+
 # --------------------------------------------------------------------------------------------------------------------
 
 # !-- We want to only print in logs if something wrong happened, hence how below code is written. --!
+
+# Run post-install-cmd (if exists)
 if (composer run-script -l 2> /dev/null | command grep --silent "post-install-cmd" > /dev/null)
 then
     echo "► Running composer's post-install-cmd..."
-    error=$(composer run-script --no-interaction post-install-cmd 2>&1)  \
-    || if [ $? -ne 0 ]; then printf "%s \nerror running composer post-install-cmd script: " "$error"; exit 1; fi
+    output=$(composer run-script --no-interaction post-install-cmd 2>&1) || { echo "error running composer post-install-cmd script: $output"; exit 1; }
     echo "✔ Successful"
 fi
 
+# Run post-autoload-dump (if exists)
 if (composer run-script -l 2> /dev/null | command grep --silent "post-autoload-dump" > /dev/null)
 then
     echo "► Running composer's post-autoload-dump..."
-    error=$(composer run-script --no-interaction post-autoload-dump 2>&1)  \
-    || if [ $? -ne 0 ]; then printf "%s \nerror running composer post-autoload-dump script: " "$error"; exit 1; fi
+    output=$(composer run-script --no-interaction post-autoload-dump 2>&1) || { echo "error running composer post-autoload-dump script: $output"; exit 1; }
     echo "✔ Successful"
 fi
 
 # Run custom ad-hoc post-install script
 echo "► Running custom post-install script..."
-error=$(post-install 2>&1)  \
-|| if [ $? -ne 0 ]; then printf "%s \nerror running post-install.sh script: " "$error"; exit 1; fi
+output=$(post-install 2>&1) || { echo "error running custom post-install script: $output"; exit 1; }
 echo "✔ Successful"
 
 # ----------------------------------------------------------------------------------------------------------------------
