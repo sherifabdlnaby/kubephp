@@ -56,7 +56,8 @@ COPY docker/php/base-*   $PHP_INI_DIR/conf.d
 
 # Clean bundled config & create composer directories (since we run as non-root later)
 RUN rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
-    mkdir -p /var/www/.composer /var/www/app && chown -R www-data:www-data /var/www/ /var/www/app
+    mkdir -p /var/www/.composer /var/www/app && chown -R www-data:www-data /var/www/ /var/www/app && \
+    usermod -u 1000 www-data
 
 # Copy scripts and PHP-FPM config
 COPY docker/fpm/*.conf          /usr/local/etc/php-fpm.d/
@@ -211,7 +212,8 @@ CMD ["php-fpm"]
 # ======================================================================================================================
 FROM nginx:${NGINX_VERSION}-alpine AS nginx
 
-RUN rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/*
+RUN rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/* && \
+    adduser -u 1000 -D -S -G www-data www-data
 
 COPY docker/nginx/nginx-*   /usr/local/bin/
 COPY docker/nginx/          /etc/nginx/
@@ -223,10 +225,10 @@ ENV PHP_FPM_HOST "localhost"
 ENV PHP_FPM_PORT "9000"
 
 # Allow Nginx to run as non-root.
-RUN chown -R nginx:nginx /var/cache/nginx /etc/nginx/ /etc/nginx/conf.d/
+RUN chown -R www-data:www-data /var/cache/nginx /etc/nginx/ /etc/nginx/conf.d/
 
 # Change to non root user
-USER nginx
+USER www-data
 
 # For Documentation
 EXPOSE 8080

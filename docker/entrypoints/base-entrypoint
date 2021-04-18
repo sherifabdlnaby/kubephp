@@ -32,4 +32,4 @@ echo "✔ Successful"
 
 # Run Dockerfile's CMD (default: $> php-fpm )
 echo "► Starting... cmd: ${@}"
-exec tini "${@}"
+exec tini -- "${@}"
