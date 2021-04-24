@@ -23,9 +23,10 @@ LABEL maintainer="sherifabdlnaby@gmail.com"
 
 RUN apt-get update && apt-get -y --no-install-recommends install \
     # Needed for Image
-    libfcgi-bin=2.4.0-10               \
-    tini=0.18.0-1                      \
-    # Needed for PHP
+    tini=0.18.0-1               \
+    libfcgi-bin=2.4.0-10        \
+    libicu-dev=63.1-6+deb10u1   \
+    # Needed for Application Runtime
 
     # Clean metadata and clear caches
     && apt-get autoremove --purge -y && apt-get clean \
@@ -38,41 +39,46 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
 #   head to: https://github.com/docker-library/docs/tree/master/php#how-to-install-more-php-extensions
 #   EX: RUN docker-php-ext-install curl pdo pdo_mysql mysqli
 #   EX: RUN pecl install memcached && docker-php-ext-enable memcached
-RUN docker-php-ext-install \
+RUN docker-php-ext-install -j$(nproc) \
     opcache     \
+    intl        \
     pdo_mysql
     # Pecl Extentions
+RUN pecl install apcu-5.1.20 && docker-php-ext-enable apcu
 #   EX: RUN pecl install memcached && docker-php-ext-enable memcached
 
 # ------------------------------------------------ PHP Configuration ---------------------------------------------------
 
-# Add Base Config
+# Add Default Config
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-# Add in Custom Config
+# Add in Base PHP Config
 COPY docker/php/base-*   $PHP_INI_DIR/conf.d
 
 # ---------------------------------------------- PHP FPM Configuration -------------------------------------------------
 
 # Clean bundled config & create composer directories (since we run as non-root later)
-RUN rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
-    mkdir -p /var/www/.composer /var/www/app && chown -R www-data:www-data /var/www/ /var/www/app && \
-    usermod -u 1000 www-data
+RUN usermod -u 1000 www-data && rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
+    mkdir -p /var/www/.composer /var/www/app && chown -R www-data:www-data /var/www/app /var/www/.composer
 
 # Copy scripts and PHP-FPM config
 COPY docker/fpm/*.conf          /usr/local/etc/php-fpm.d/
 
 # --------------------------------------------------- Scripts ----------------------------------------------------------
 
-COPY docker/fpm/fpm-healthcheck /usr/local/bin/
-COPY docker/entrypoints/base-*  /usr/local/bin/
-COPY docker/healthcheck         /usr/local/bin/
-COPY docker/post-install        /usr/local/bin/
-RUN  chmod +x /usr/local/bin/base-* /usr/local/bin/*healthcheck /usr/local/bin/post-install
+COPY docker/entrypoints             /usr/local/bin/
+COPY docker/healthcheck             /usr/local/bin/
+COPY docker/post-*                  /usr/local/bin/
+COPY docker/fpm/fpm-healthcheck     /usr/local/bin/
+RUN  chmod +x /usr/local/bin/entrypoint-* /usr/local/bin/post-* /usr/local/bin/healthcheck
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
+
+# ----------------------------------------------- NON-ROOT SWITCH ------------------------------------------------------
+
+USER www-data
 
 # ----------------------------------------------------- MISC -----------------------------------------------------------
 
@@ -92,7 +98,7 @@ HEALTHCHECK CMD ["healthcheck"]
 
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
-ENTRYPOINT ["base-entrypoint"]
+ENTRYPOINT ["entrypoint-base"]
 CMD ["php-fpm"]
 
 # ======================================================================================================================
@@ -104,7 +110,7 @@ FROM composer as vendor
 
 ARG PHP_VERSION
 ARG COMPOSER_AUTH
-# A Json Object with Bitbucket or Github token to clone private Repos with composer
+# A Json Object with remote repository token to clone private Repos with composer
 # Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
 ENV COMPOSER_AUTH $COMPOSER_AUTH
 
@@ -116,27 +122,18 @@ COPY composer.lock composer.lock
 RUN composer config platform.php ${PHP_VERSION}
 
 # Install Dependeinces
-## * Platform requirments are checked at the next image steps.
-## * Scripts and Autoload are run at the next image steps.
+## * Platform requirments are checked at the later steps.
+## * Scripts and Autoload are run at later steps.
 RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --prefer-dist
 
 # ======================================================================================================================
-# ===========================================  PRODUCTION FINAL STAGES  ================================================
+# ==============================================  PRODUCTION IMAGE  ====================================================
 #                                                   --- PROD ---
 # ======================================================================================================================
 
 FROM base AS app
 
-# Switch to root to add stuff
-USER root
-
-# Copy Prod Entrypoint && PHP Config
-COPY docker/entrypoints/prod-*  /usr/local/bin/
 COPY docker/php/prod-*   $PHP_INI_DIR/conf.d/
-RUN  chmod +x /usr/local/bin/prod-*
-
-# Run as non-root
-USER www-data
 
 # Copy Vendor
 COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
@@ -147,10 +144,11 @@ COPY --chown=www-data:www-data . .
 # 1. Dump optimzed autoload for vendor and app classes.
 # 2. --no-scripts as scripts are run on runtime via entrypoint.
 # 3. checks that PHP and extensions versions match the platform requirements of the installed packages.
-RUN composer dump-autoload -n --optimize --no-scripts --no-dev --classmap-authoritative && composer check-platform-reqs
+RUN composer dump-autoload -n --optimize --no-scripts --no-dev --classmap-authoritative && \
+    composer check-platform-reqs && \
+    post-build
 
-
-ENTRYPOINT ["prod-entrypoint"]
+ENTRYPOINT ["entrypoint-prod"]
 CMD ["php-fpm"]
 
 # ======================================================================================================================
@@ -187,21 +185,19 @@ COPY docker/php/dev-*   $PHP_INI_DIR/conf.d/
 
 # ------------------------------------------------- Entry Point --------------------------------------------------------
 
-# Copy Entrypoint
-COPY docker/entrypoints/dev-*   /usr/local/bin/
-RUN  chmod +x /usr/local/bin/dev-*
-
 # Run as non-root
 USER www-data
 
-# Copy Vendor And Generate Autoload
-COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
+# Copy Vendor And Generate Autoload ( Needs Composer.* to check reqs and generate autoload)
 COPY --chown=www-data:www-data composer.json composer.json
 COPY --chown=www-data:www-data composer.lock composer.lock
-RUN composer dump-autoload -n --no-scripts && composer check-platform-reqs
+COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
+RUN composer install --no-scripts && composer dump-autoload -n --no-scripts && \
+    composer check-platform-reqs && \
+    post-build
 
-ENTRYPOINT ["dev-entrypoint"]
-
+# Entrypoints
+ENTRYPOINT ["entrypoint-dev"]
 CMD ["php-fpm"]
 
 
@@ -212,8 +208,7 @@ CMD ["php-fpm"]
 # ======================================================================================================================
 FROM nginx:${NGINX_VERSION}-alpine AS nginx
 
-RUN rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/* && \
-    adduser -u 1000 -D -S -G www-data www-data
+RUN rm -rf /var/www/* /etc/nginx/conf.d/* && adduser -u 1000 -D -S -G www-data www-data
 
 COPY docker/nginx/nginx-*   /usr/local/bin/
 COPY docker/nginx/          /etc/nginx/

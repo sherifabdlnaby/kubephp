@@ -28,44 +28,40 @@
 </p>
 
 # Introduction
-**Docker Image for Symfony 4.3+ Application** running **Nginx + PHP FPM** based on [PHP](https://hub.docker.com/_/php) & [Nginx](https://hub.docker.com/_/nginx) **Alpine Official Images**.
+**Production Grade Docker Image for PHP 7+ Application** running for **Nginx + PHP FPM** based on [PHP](https://hub.docker.com/_/php) & [Nginx](https://hub.docker.com/_/nginx) **Official Images**, compatible with popular PHP Frameworks such as [Laravel 5+](https://laravel.com/) & [Symfony 4+](https://symfony.com/) and their variants.
 
-This is a pre-configured template image for your Symfony Project, **and you shall extend and edit it according to your app requirements.**
-The Image utilizes docker's multistage builds to create multiple targets optimized for **production** and **development**.
+This is a pre-configured template image for your PHP Project, **and you shall extend and edit it according to your app requirements.**
 
-You should copy this repository`Dockerfile`, `docker` Directory, `Makefile`, and `.dockerignore` to your Symfony application repository and configure it to your needs.
+The Image utilizes multistage builds to create multiple targets optimized for **production** and **development**.
 
-### Main Points 📜
+> ⚠️ This image is for PHP applications that uses a single-entrypoint framework in `public/index.php`, such as Laravel, Symfony, and all their variants.
 
+## Main Points 📜
+
+- Designed to run in orchestrated environments like Kubernetes.
 - Multi-Container setup with `Nginx` & `PHP-FPM` communicating via TCP.
+- Production Image that are **immutable** and **fully contained** with source code and dependencies inside.
+- Multi-stage builds for an optimized cache layers.
+- Transparent configuration, all configuration determine app behavior are captured in VCS, such as PHP, FPM, and Nginx Config
+- Production configuration with saint defaults tuned for performance.
+- Easily extend the image with extra configuration, and scripts; with predictable execution. 
+- Fast container start time.
+- Development Image supports mounting code and hot-reloading.
+- Image tries to fail at build time as much as possible by running all sort of checks.
 
-- Production Images is **immutable** and **fully contained Image** with source code and dependencies inside, Development image is set up for mounting source code on runtime with hot-reload.
+## How to add to my project ?
 
-- Image configuration is transparent, all configuration and default configurations that determine app behavior are present in the image directory.
+- Copy this repository`Dockerfile`, `docker` Directory, `Makefile`, and `.dockerignore` to your application root directory and configure it to your needs.
 
-- Nginx is pre-configured with **HTTP**, **HTTPS**, and **HTTP2**. and uses a self-signed certificate generated at build-time. For production, you'll need to mount your own signed certificates to `/etc/nginx/ssl/server.(crt/key)`.
+## How to configure image to run my project ?
 
-- The image has set up **healthchecks** for `Nginx` and `PHP-FPM`, and you can add application logic healthcheck by adding it in `healthcheck.sh`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/healthcheck.sh).
-
-- Image tries to fail at build time as much as possible by running all sort of Checks.
-
-- Dockerfile is arranged for optimizing prod builds so that changes won't invalidate cache as much as possible.
-
-- Available a `Supervisord` and `Crond` image variant for your consumers and cron commands.
-
-
-<p align="center">
-<img src="https://user-images.githubusercontent.com/16992394/65840420-40102c00-e319-11e9-952b-6e1267661c29.png">
-</p>
-
+- You'll need to iterate over your application's dependency system packages, and required PHP Extensions; and add them to their respective locations in the image. (instructions below) 
 
 -----
-
 # Requirements 
 
-- [Docker 17.05 or higher](https://docs.docker.com/install/) 
-- [Docker-Compose 3.4 or higher](https://docs.docker.com/compose/install/) (optional) 
-- Symfony 4+ Application
+- [Docker 20.05 or higher](https://docs.docker.com/install/) 
+- [Docker-Compose 3.5 or higher](https://docs.docker.com/compose/install/) (optional)
 - PHP >= 7 Application
 
 # Setup
@@ -82,102 +78,76 @@ OR
 
 #### 2. Start
 1. Modify `Dockerfile` to your app needs, and add your app needed PHP Extensions and Required Packages.
-2. Go to `docker/.composer/.env` and modify `SERVER_NAME` to your app's name.
-3. Run `make up` for development or `make deploy` for production. 
-4. Go to [https://localhost](https://localhost) 
+2. Run `make up` for development or `make deploy` for production. 
+4. Go to [http://localhost](http://localhost:8080) 
 
 > Makefile is just a wrapper over docker-compose commands.
-
-> Production runs on port `80` and `443`, Development runs on `8080` and `443`.
       
-# Building and Extending Image 
+## Building, Configuring and Extending Image 
 
-1. The image is to be used as a base for your Symfony application image, you should modify its Dockerfile to your needs.
-
-2. The image comes with a handy _Makefile_ to build the image using Docker-Compose files, it's handy when manually building the image for development or in a not-orchestrated docker host.
+### Image Targets and Build Arguments
+- The image comes with a handy _Makefile_ to build the image using Docker-Compose files, it's handy when manually building the image for development or in a not-orchestrated docker host.
 However, in an environment where CI/CD pipelines will build the image, they will need to supply some build-time arguments for the image. (tho defaults exist.)
+    
+    #### Build Time Arguments
+    | **ARG**            | **Description**                                                                                                                                      | **Default** |
+    |--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|
+    | `PHP_VERSION`      | PHP Version used in the Image                                                                                                                        | `7.4`     |
+    | `NGINX_VERSION`    | Nginx Version                                                                                                                                        | `1.17.4`    |
+    | `COMPOSER_VERSION` | Composer Version used in Image                                                                                                                       | `2.0`     |
+    | `COMPOSER_AUTH`    | A Json Object with Bitbucket or Github token to clone private Repos with composer.</br>[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}`        | 
+    
+    #### Runtime Environment Variables
+    | **ENV**     | **Description** | **Default**                                                 |
+    |-------------|-----------------|-------------------------------------------------------------|
+    | `APP_ENV`   | App Environment | - `prod` for Production image</br> - `dev` for Development image     |
+    | `APP_DEBUG` | Enable Debug    | - `0` for Production image</br>- `1` for Development image           |
+    
+    #### Image Targets
+    
+    | **Target** | Env         | Desc                                                                                                                                                                                                                                                                             | Size   | Based On                      |
+    |------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|-------------------------------|
+    | app        | Production  | The PHP Application with immutable code/dependencies. By default starts `PHP-FPM` process listening on `9000`.  Command can be extended to run any PHP Consumer/Job, entrypoint will still start the pre-run setup and then run the supplied command.                            | ~450mb | PHP Official Image (Debian)   |
+    | web        | Production  | The webserver, an Nginx container that is configured to server static content and forward dynamic requests to the PHP-FPM container running in the `app` image variant                                                                                                           | ~21mb  | Nginx Official Image (Alpine) |
+    | app-dev    | Development | Development PHP Application variant with dependencies inside. Image expects the code to be mounted on `/var/www/app` to support hot-reloading. You need to mount dummy `/var/www/app/vendor` volume too to avoid code volume to overwrite dependencies already inside the image. | ~450mb | PHP Official Image (Debian)   |
+    | web-dev    | Development | Development Webserver with the exact configuration as the production configuration. Expects public directory to be mounted at `/var/www/app/public`                                                                                                                              |    ~21mb     |   Nginx Official Image (Alpine)                            |
 
-### Build Time Arguments
-| **ARG**            | **Description**                                                                                                                                      | **Default** |
-|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|
-| `PHP_VERSION`      | PHP Version used in the Image                                                                                                                        | `7.3.9`     |
-| `ALPINE_VERSION`   | Alpine Version                                                                                                                                       | `3.10`      |
-| `NGINX_VERSION`    | Nginx Version                                                                                                                                        | `1.17.4`    |
-| `COMPOSER_VERSION` | Composer Version used in Image                                                                                                                       | `1.9.0`     |
-| `SERVER_NAME`      | Server Name</br> (In production, and using SSL, this must match certificate's *common name*)                                                              | `php-app`   |
-| `COMPOSER_AUTH`    | A Json Object with Bitbucket or Github token to clone private Repos with composer.</br>[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}`        | 
+### Install System Dependencies and PHP Extensions
+- The image is to be used as a base for your PHP application image, you should modify its Dockerfile to your needs.
 
-### Runtime Environment Variables
-| **ENV**     | **Description** | **Default**                                                 |
-|-------------|-----------------|-------------------------------------------------------------|
-| `APP_ENV`   | App Environment | - `prod` for Production image</br> - `dev` for Development image     |
-| `APP_DEBUG` | Enable Debug    | - `0` for Production image</br>- `1` for Development image           |
-
-### Image Targets
-
-| **Target**       | **Description**                                                                                      |  **Size**    |          **Stdout**              |             **Targets**              |
-|--------------    |----------------------------------------------------------------------------------------------------  |--------------    |:----------------------------:    |:-----------------------------------: |
-| `nginx`          | The Webserver, serves static content and replay others requests `php-fpm`                            | 21 MB            | Nginx Access and Error logs.     |      `nginx-prod`, `nginx-dev`       |
-| `fpm`            | PHP_FPM, which will actually run the PHP Scripts for web requests.                                   | 78 MB            |  PHP Application logs only.      |        `fpm-prod`, `fpm-dev`         |
-| `supervisor`     | Contains supervisor and source-code, for your consumers. (config at `docker/conf/supervisor/`)       | 120 MB           |    Stdout of all Commands.       |           `supervisor-prod`           |
-| `cron`           | Loads crontab and your app source-code, for your cron commands. (config at `docker/conf/crontab`)    | 78 MB            |     Stdout of all Crons.         |              `cron-prod`             |
-
-> All Images are **Alpine** based.  Official PHP-Alpine-CLI image size is 79.4MB. 
-
-> Size stated above are calculated excluding source code and vendor directory. 
-
-## Tips for building Image in different environments
-
-### Production
-1. For SSL: Mount your signed certificates as secrets to `/etc/nginx/ssl/server.key` & `/etc/nginx/ssl/server.crt`
-2. Make sure build argument `SERVER_NAME` matches certificate's **common name**.
-2. Expose container port `80` and `443`.    
-
-> By default, Image has a generated self-signed certificate for SSL connections added at build time.
-### Development
-1. Mount source code root to `/var/www/app`
-2. Expose container port `8080` and `443`. (or whatever you need actually)
-
-----
-
-# Configuration
-
-## 1. PHP Extensions, Dependencies, and Configuration
-
-### Modify PHP Configuration
-1. PHP `prod` Configuration  `docker/conf/php/php-prod.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/conf/php/php-prod.ini) 
-2. PHP `dev` Configuration  `docker/conf/php/php-dev.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/conf/php/php-dev.ini) 
-3. PHP additional [Symfony recommended configuration](https://symfony.com/doc/current/performance.html#configure-opcache-for-maximum-performance) at `docker/conf/php/symfony.ini` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/conf/php/symfony.ini) 
-
-### Add Packages needed for PHP runtime
-Add Packages needed for PHP runtime in this section of the `Dockerfile`.
-```Dockerfile
-...
-# ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
-RUN apk add --no-cache    \
-#    # - Please define package version too ---
-#    # -----  Needed for Image----------------
-   fcgi tini \
-#    # -----  Needed for PHP -----------------
-    <HERE>
-...
-``` 
-
-### Add & Enable PHP Extensions
-Add PHP Extensions using `docker-php-ext-install <extensions...>` or `pecl install <extensions...>`  and Enable them by `docker-php-ext-enable <extensions...>`
-in this section of the `Dockerfile`.
-```Dockerfile
-...
-# --------------------- Install / Enable PHP Extensions ------------------------
-RUN docker-php-ext-install opcache && pecl install memcached && docker-php-ext-enable memcached
-...
-```
-
+    1. Install System Packages in the following section in the Dockerfile.
+    ```dockerfile
+    # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
+    
+    RUN apt-get update && apt-get -y --no-install-recommends install \
+        # Needed for Image
+        ...
+        # Needed for Application Runtime
+        ...
+        < INSTALL YOU APPLICATION DEPENDENCY SYSTEM PACKAGES HERE>
+        ...
+    ```
+    2. Install PHP Extensions In the following section in the Dockerfile.
+    ```dockerfile
+    # ---------------------------------------- Install / Enable PHP Extensions ---------------------------------------------
+    RUN docker-php-ext-install \
+    opcache     \
+    intl        \
+    pdo_mysql   \
+    # Pecl Extentions
+    RUN pecl install apcu-5.1.20 && docker-php-ext-enable apcu
+    #   EX: RUN pecl install memcached && docker-php-ext-enable memcached
+    ```
 ##### Note
-
 > At build time, Image will run `composer check-platform-reqs` to check that PHP and extensions versions match the platform requirements of the installed packages.
 
-## 2. Nginx Configuration
+### PHP Configuration
+1. PHP `base` Configuration that are common in all environments in `docker/php/base-php.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/php/base-php.ini) 
+1. PHP `prod` Only Configuration  `docker/conf/php/php-prod.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/php/prod-php.ini) 
+2. PHP `dev` Only Configuration  `docker/conf/php/php-dev.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/php/dev-php.ini) 
+
+
+### PHP FPM Configuration
 
 Nginx defaults are all defined in `docker/conf/nginx/` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/conf/nginx/)
 
@@ -189,27 +159,6 @@ Nginx is pre-configured with:
 5. Serving Static content with default cache `7d`
 6. Metrics endpoint at `:8080/stub_status` from localhost only.
 
-##### Note
-
-> At build time, Image will run `nginx -t` to check config file syntax is OK.
-
-## 3. Post Deployment Custom Scripts
-
-Post Installation scripts should be configured in `composer.json` in the `post-install-cmd` [part](https://getcomposer.org/doc/articles/scripts.md#command-events).
-
-However, Sometimes, some packages have commands that need to be run on startup, that are not compatible with composer, provided in the image a shell script `post-deployment.sh`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/post-deployment.sh) that will be executed after deployment. 
-Special about this file that it comes loaded with all OS Environment variables **as well as defaults from `.env` and `.env.${APP_ENV}` files.** so it won't need a special treatment handling parameters.
-
-> It is still discouraged to be used if it's possible to run these commands using composer scripts.
-
-## 3. Supervisor Consumers
-
-If you have consumers (e.g rabbitMq or Kafka consumers) that need to be run under supervisor, you can define these at `docker/conf/supervisor/*`, which will run by the `supervisor` image target.
-
-## 4. Cron Commands
-
-If you have cron jobs, you can define them in `docker/conf/crontab`, which will run by the `cron` image target.
-
 --------
 
 # Misc Notes
@@ -220,18 +169,8 @@ If you have cron jobs, you can define them in `docker/conf/crontab`, which will 
 
 # License 
 [MIT License](https://raw.githubusercontent.com/sherifabdlnaby/symdocker/blob/master/LICENSE)
-Copyright (c) 2019 Sherif Abdel-Naby
+Copyright (c) 2021 Sherif Abdel-Naby
 
 # Contribution
 
 PR(s) are Open and welcomed.
-
-This image has so little to do with Symfony itself and more with Setting up a PHP Website with Nginx and FPM, hence it can be extended for other PHP Frameworks (e.g Laravel, etc). maybe if you're interested to build a similar image for another framework we can collaborate. 
-
-### Possible Ideas
-
-- [x] Add a slim image with supervisor for running consumers.
-- [x] Add a slim image with cron tab for cron job instances.
-- [ ] Add node build stage that compiles javascript.
-- [ ] Recreate the image for Symfony 3^
-- [ ] Recreate the image for Laravel

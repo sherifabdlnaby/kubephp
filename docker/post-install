@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-# Load .env and .env.<APP_ENV> into script (won't overwrite OS env vars.)
+# Load .env and .env.<APP_ENV>, and .env.<APP_ENV>.local into script (won't overwrite OS env vars.)
 set -a
     env_overwrite=./.env.${APP_ENV-prod}
     env_local_overwrite=./.env.${APP_ENV-prod}.local

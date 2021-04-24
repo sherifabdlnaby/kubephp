@@ -8,7 +8,7 @@ for f in $(find /etc/nginx/ -name "*.conf"); do cat $f | envsubst "$(env | sed -
 sleep 1
 
 # Validate & Test nginx config (retry to wait if fpm host hasn't started yet)
-timeout 60 sh -c 'until nginx -t -q; do sleep 1; done'
-timeout 60 sh -c 'until nc -z $0 $1; do sleep 1; done' $PHP_FPM_HOST $PHP_FPM_PORT
+timeout 60 sh -c 'until nginx -t -q; do echo 'Retrying...'; sleep 1; done'
+timeout 60 sh -c 'until nc -z $0 $1; do echo 'Retrying...'; sleep 1; done' $PHP_FPM_HOST $PHP_FPM_PORT
 
 exec nginx -g 'daemon off;'

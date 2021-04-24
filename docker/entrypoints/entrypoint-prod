@@ -3,6 +3,5 @@ set -eu
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-
 # Run Entrypoint and pass CMD to it (Don't forget exec)
-exec base-entrypoint "${@}"
+exec entrypoint-base "${@}"
