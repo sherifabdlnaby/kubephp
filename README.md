@@ -42,6 +42,7 @@ The Image utilizes multistage builds to create multiple targets optimized for **
 - Designed to run in orchestrated environments like Kubernetes.
 - Multi-Container setup with `Nginx` & `PHP-FPM` communicating via TCP.
 - Production Image that are **immutable** and **fully contained** with source code and dependencies inside.
+- **Runs as non-root** in both application containers.
 - Configured for graceful shutdowns/restarts, and correctly pass termination signal.
 - Multi-stage builds for an optimized cache layers.
 - Transparent configuration, all configuration determine app behavior are captured in VCS, such as PHP, FPM, and Nginx Config
