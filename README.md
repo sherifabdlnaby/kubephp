@@ -9,7 +9,7 @@ PHP Docker Image for Cloud Native Deployments (and Kubernetes)</h2>
 
 <p align="center">
 	<a>
-		<img src="https://img.shields.io/github/v/tag/sherifabdlnaby/symdocker?label=release&amp;sort=semver">
+		<img src="https://img.shields.io/github/v/tag/sherifabdlnaby/phpdocker?label=release&amp;sort=semver">
     </a>
 	<a>
 		<img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat" alt="contributions welcome">
@@ -17,13 +17,13 @@ PHP Docker Image for Cloud Native Deployments (and Kubernetes)</h2>
 	<a>
 		<img src="https://img.shields.io/badge/PHP-%3E=7-blueviolet" alt="PHP >=7^">
 	</a>
-	<a href="https://github.com/sherifabdlnaby/symdocker/network">
-		<img src="https://img.shields.io/github/forks/sherifabdlnaby/symdocker.svg" alt="GitHub forks">
+	<a href="https://github.com/sherifabdlnaby/phpdocker/network">
+		<img src="https://img.shields.io/github/forks/sherifabdlnaby/phpdocker.svg" alt="GitHub forks">
 	</a>
-	<a href="https://github.com/sherifabdlnaby/symdocker/issues">
-        <img src="https://img.shields.io/github/issues/sherifabdlnaby/symdocker.svg" alt="GitHub issues">
+	<a href="https://github.com/sherifabdlnaby/phpdocker/issues">
+        <img src="https://img.shields.io/github/issues/sherifabdlnaby/phpdocker.svg" alt="GitHub issues">
 	</a>
-	<a href="https://raw.githubusercontent.com/sherifabdlnaby/symdocker/blob/master/LICENSE">
+	<a href="https://raw.githubusercontent.com/sherifabdlnaby/phpdocker/blob/master/LICENSE">
 		<img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="GitHub license">
 	</a>
 </p>
@@ -95,7 +95,7 @@ Your application will be split into two components.
 
 OR
 
-<a href="https://github.com/sherifabdlnaby/symdocker/generate">
+<a href="https://github.com/sherifabdlnaby/phpdocker/generate">
 <img src="https://user-images.githubusercontent.com/16992394/65464461-20c95880-de5a-11e9-9bf0-fc79d125b99e.png" alt="create repository from template"></a>
 
 #### 2. Start
@@ -164,15 +164,15 @@ However, in an environment where CI/CD pipelines will build the image, they will
 > At build time, Image will run `composer check-platform-reqs` to check that PHP and extensions versions match the platform requirements of the installed packages.
 
 ### PHP Configuration
-1. PHP `base` Configuration that are common in all environments in `docker/php/base-php.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/php/base-php.ini) 
-1. PHP `prod` Only Configuration  `docker/conf/php/php-prod.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/php/prod-php.ini) 
-2. PHP `dev` Only Configuration  `docker/conf/php/php-dev.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/php/dev-php.ini) 
+1. PHP `base` Configuration that are common in all environments in `docker/php/base-php.ini`[🔗](https://github.com/sherifabdlnaby/phpdocker/blob/master/docker/php/base-php.ini) 
+1. PHP `prod` Only Configuration  `docker/conf/php/php-prod.ini`[🔗](https://github.com/sherifabdlnaby/phpdocker/blob/master/docker/php/prod-php.ini) 
+2. PHP `dev` Only Configuration  `docker/conf/php/php-dev.ini`[🔗](https://github.com/sherifabdlnaby/phpdocker/blob/master/docker/php/dev-php.ini) 
 
 ### PHP FPM Configuration
-1. PHP FPM Configuration  `docker/fpm/*.conf` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/fpm)
+1. PHP FPM Configuration  `docker/fpm/*.conf` [🔗](https://github.com/sherifabdlnaby/phpdocker/blob/master/docker/fpm)
 
 ### Nginx Configuration
-1. Nginx Configuration  `docker/nginx/*.conf && docker/nginx/conf.d/* ` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/nginx)
+1. Nginx Configuration  `docker/nginx/*.conf && docker/nginx/conf.d/* ` [🔗](https://github.com/sherifabdlnaby/phpdocker/blob/master/docker/nginx)
 
 ## Post Build and Pre Run optional scripts.
 
@@ -208,7 +208,7 @@ In `docker/` directory there is `post-build` and `post-install` scripts that are
 
 
 # License 
-[MIT License](https://raw.githubusercontent.com/sherifabdlnaby/symdocker/blob/master/LICENSE)
+[MIT License](https://raw.githubusercontent.com/sherifabdlnaby/phpdocker/blob/master/LICENSE)
 Copyright (c) 2021 Sherif Abdel-Naby
 
 # Contribution
