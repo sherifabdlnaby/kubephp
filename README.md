@@ -46,7 +46,7 @@ The Image utilizes multistage builds to create multiple targets optimized for **
 - Configured for graceful shutdowns/restarts, and correctly pass termination signal.
 - Multi-stage builds for an optimized cache layers.
 - Transparent configuration, all configuration determine app behavior are captured in VCS, such as PHP, FPM, and Nginx Config
-- Production configuration with saint defaults tuned for performance.
+- Production configuration with sane defaults tuned for performance.
 - Easily extend the image with extra configuration, and scripts; such as post-build & pre-run scripts. 
 - Fast container start time done by only doing the necessary steps at application start and offload anything else to build.
 - Override-able container CMD, used to run PHP Commands, to be used for cron-jobs/consumers.
