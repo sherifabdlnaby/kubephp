@@ -23,9 +23,9 @@ then
     echo "✔ Successful"
 fi
 
-# Run custom ad-hoc post-install script
-echo "► Running custom post-install script..."
-output=$(post-install 2>&1) || { echo "error running custom post-install script: $output"; exit 1; }
+# Run custom ad-hoc pre-run script
+echo "► Running custom pre-run script..."
+output=$(pre-run 2>&1) || { echo "error running custom pre-run script: $output"; exit 1; }
 echo "✔ Successful"
 
 # ----------------------------------------------------------------------------------------------------------------------

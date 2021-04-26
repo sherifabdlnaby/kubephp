@@ -68,9 +68,10 @@ COPY docker/fpm/*.conf          /usr/local/etc/php-fpm.d/
 
 COPY docker/entrypoints             /usr/local/bin/
 COPY docker/healthcheck             /usr/local/bin/
-COPY docker/post-*                  /usr/local/bin/
+COPY docker/post-build              /usr/local/bin/
+COPY docker/pre-run                 /usr/local/bin/
 COPY docker/fpm/fpm-healthcheck     /usr/local/bin/
-RUN  chmod +x /usr/local/bin/entrypoint-* /usr/local/bin/post-* /usr/local/bin/healthcheck
+RUN  chmod +x /usr/local/bin/entrypoint-* /usr/local/bin/post-build /usr/local/bin/pre-run /usr/local/bin/*healthcheck
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 

@@ -1,8 +1,12 @@
 <p align="center">
-<img width="520px" src="https://user-images.githubusercontent.com/16992394/65461542-697e1300-de54-11e9-8e4f-34adcc448747.png">
+<img width="520px" src="https://user-images.githubusercontent.com/16992394/116017444-e03a4e00-a63f-11eb-8070-1cdf9fc8678e.png">
 </p>
-<h2 align="center">🐳 A preconfigured, extendable, multistage, PHP Symfony 4.3+ Docker Image for Production and Development</h2>
-<p align="center">.</p>
+<h2 align="center">🐳 Production Grade, Rootless, Pre-configured, Extendable, and Multistage
+
+PHP Docker Image for Cloud Native Deployments (and Kubernetes)</h2>
+
+<h4 align="center">compatible with popular PHP Frameworks such as <a href="https://laravel.com/">Laravel 5+</a> &amp; <a href="https://symfony.com/">Symfony 4+</a> and their variants.</h4>
+
 <p align="center">
 	<a>
 		<img src="https://img.shields.io/github/v/tag/sherifabdlnaby/symdocker?label=release&amp;sort=semver">
@@ -12,9 +16,6 @@
 	</a>
 	<a>
 		<img src="https://img.shields.io/badge/PHP-%3E=7-blueviolet" alt="PHP >=7^">
-	</a>
-	<a>
-		<img src="https://img.shields.io/badge/Symfony-4%5E-black" alt="Symfony 4^">
 	</a>
 	<a href="https://github.com/sherifabdlnaby/symdocker/network">
 		<img src="https://img.shields.io/github/forks/sherifabdlnaby/symdocker.svg" alt="GitHub forks">
@@ -41,13 +42,16 @@ The Image utilizes multistage builds to create multiple targets optimized for **
 - Designed to run in orchestrated environments like Kubernetes.
 - Multi-Container setup with `Nginx` & `PHP-FPM` communicating via TCP.
 - Production Image that are **immutable** and **fully contained** with source code and dependencies inside.
+- Configured for graceful shutdowns/restarts, and correctly pass termination signal.
 - Multi-stage builds for an optimized cache layers.
 - Transparent configuration, all configuration determine app behavior are captured in VCS, such as PHP, FPM, and Nginx Config
 - Production configuration with saint defaults tuned for performance.
-- Easily extend the image with extra configuration, and scripts; with predictable execution. 
-- Fast container start time.
-- Development Image supports mounting code and hot-reloading.
+- Easily extend the image with extra configuration, and scripts; such as post-build & pre-run scripts. 
+- Fast container start time done by only doing the necessary steps at application start and offload anything else to build.
+- Override-able container CMD, used to run PHP Commands, to be used for cron-jobs/consumers.
 - Image tries to fail at build time as much as possible by running all sort of checks.
+- Default Healtchecks embedded for PHP FPM and Nginx
+- Development Image supports mounting code and hot-reloading.
 
 ## How to add to my project ?
 
@@ -55,13 +59,31 @@ The Image utilizes multistage builds to create multiple targets optimized for **
 
 ## How to configure image to run my project ?
 
-- You'll need to iterate over your application's dependency system packages, and required PHP Extensions; and add them to their respective locations in the image. (instructions below) 
+You'll need to iterate over your application's dependency system packages, and required PHP Extensions; and add them to their respective locations in the image. 
+
+1. Add System Dependencies and PHP Extensions your application depends on to the Image.
+2. Port in any configuration changes you made for PHP.ini to the image, otherwise use the saint defaults.
+3. `make build && make up` for development setup, `make deploy` to run the production variant.
+
+These steps explained in details below.
+
+## How is it deployed ?
+
+<img src="https://user-images.githubusercontent.com/16992394/116017065-dd8b2900-a63e-11eb-917e-6b04a4e6e89b.png">
+
+Your application will be split into two components.
+
+1. **The Webserver** -> Server Static Content and proxy dynamic requests to PHP-FPM over TCP, webserver also applies rate limiting, security headers... and whatever it is configured for.
+2. **The PHP Process** -> PHP FPM process that will run you PHP Code.
+
+> Other type of deployments such as a cron-job, or a supervised consumer can be achieved by overriding the default image CMD. 
 
 -----
+
 # Requirements 
 
 - [Docker 20.05 or higher](https://docs.docker.com/install/) 
-- [Docker-Compose 3.5 or higher](https://docs.docker.com/compose/install/) (optional)
+- [Docker-Compose 3.7 or higher](https://docs.docker.com/compose/install/) (optional)
 - PHP >= 7 Application
 
 # Setup
@@ -146,26 +168,44 @@ However, in an environment where CI/CD pipelines will build the image, they will
 1. PHP `prod` Only Configuration  `docker/conf/php/php-prod.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/php/prod-php.ini) 
 2. PHP `dev` Only Configuration  `docker/conf/php/php-dev.ini`[🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/php/dev-php.ini) 
 
-
 ### PHP FPM Configuration
+1. PHP FPM Configuration  `docker/fpm/*.conf` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/fpm)
 
-Nginx defaults are all defined in `docker/conf/nginx/` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/conf/nginx/)
+### Nginx Configuration
+1. Nginx Configuration  `docker/nginx/*.conf && docker/nginx/conf.d/* ` [🔗](https://github.com/sherifabdlnaby/symdocker/blob/master/docker/nginx)
 
-Nginx is pre-configured with:
-1. HTTP, HTTPS, and HTTP2.
-2. Rate limit (`rate=5r/s`)
-3. Access & Error logs to `stdout/err`
-4. Recommended Security Headers
-5. Serving Static content with default cache `7d`
-6. Metrics endpoint at `:8080/stub_status` from localhost only.
+## Post Build and Pre Run optional scripts.
+
+In `docker/` directory there is `post-build` and `post-install` scripts that are used **to extend the image** and add extra behavior.
+
+1. `post-build` command runs at the end of Image build.
+   
+    Run as the last step during the image build. Are Often framework specific commands that generate optimized builds.
+   
+2. `pre-run` command runs **in runtime** before running the container main command
+   
+    Runs before the container's CMD, but after the composer's post-install and post-autload-dump. Used for commands that needs to run at runtime before the application is started. Often are scripts that depends on other services or runtime parameters.
 
 --------
 
 # Misc Notes
 - Your application [should log app logs to stdout.](https://stackoverflow.com/questions/38499825/symfony-logs-to-stdout-inside-docker-container). Read about [12factor/logs](https://12factor.net/logs) 
-- By default, `php-fpm` access & error logs are disabled as they're mirrored on `nginx`, this is so that `php-fpm` image will contain **only** application logs written by PHP.
-- During Build, Image will run `composer dump-autoload` and `composer dump-env` to optimize for performance.
+- By default, `php-fpm` access logs are disabled as they're mirrored on `nginx`, this is so that `php-fpm` image will contain **only** application logs written by PHP.
 - In **production**, Image contains source-code, however, you must sync both `php-fpm` and `nginx` images so that they contain the same code.
+
+
+--------
+
+# FAQ
+
+1. Why two containers instead of one ?
+
+    1. In containerized environment, you need to only run one process inside the container. This allows us to better instrument our application for many reasons like separation of health status, metrics, logs, etc.
+
+2. Why `debian` based image not `alpine` ?
+    
+    1. While a smaller image is very desired, and PHP image is infamous of being big. Alpine lacks a lot of packages (Available via `apk`) that a typical PHP would need. Some packages are not even available for alpine as they link to glibc not musl.
+
 
 # License 
 [MIT License](https://raw.githubusercontent.com/sherifabdlnaby/symdocker/blob/master/LICENSE)

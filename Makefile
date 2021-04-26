@@ -12,9 +12,6 @@ deploy:			## Deploy Prod Image
 	${COMPOSE_PREFIX_CMD} docker-compose -f docker-compose.prod.yml up --build -d
 
 up:				## Start service
-	${COMPOSE_PREFIX_CMD} docker-compose up -d
-
-build-up:       ## Start service, rebuild if necessary
 	${COMPOSE_PREFIX_CMD} docker-compose up --build -d
 
 build:			## Build The Image
