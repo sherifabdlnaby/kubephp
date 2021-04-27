@@ -63,7 +63,7 @@ The Image utilizes multistage builds to create multiple targets optimized for **
 You'll need to iterate over your application's dependency system packages, and required PHP Extensions; and add them to their respective locations in the image. 
 
 1. Add System Dependencies and PHP Extensions your application depends on to the Image.
-2. Port in any configuration changes you made for PHP.ini to the image, otherwise use the saint defaults.
+2. Port in any configuration changes you made for PHP.ini to the image, otherwise use the sane defaults.
 3. `make build && make up` for development setup, `make deploy` to run the production variant.
 
 These steps explained in details below.
