@@ -125,7 +125,7 @@ RUN composer config platform.php ${PHP_VERSION}
 # Install Dependeinces
 ## * Platform requirments are checked at the later steps.
 ## * Scripts and Autoload are run at later steps.
-RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --prefer-dist
+RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --prefer-dist --no-dev
 
 # ======================================================================================================================
 # ==============================================  PRODUCTION IMAGE  ====================================================
