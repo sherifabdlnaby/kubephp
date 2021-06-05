@@ -11,7 +11,6 @@ services:
         COMPOSER_AUTH: "{}"
     restart: unless-stopped
     volumes:
-      - /var/www/app/vendor
       - .:/var/www/app
 
   web:

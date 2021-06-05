@@ -26,6 +26,7 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
     tini=0.18.0-1               \
     libfcgi-bin=2.4.0-10        \
     libicu-dev=63.1-6+deb10u1   \
+    gettext-base                \
     # Needed for Application Runtime
 
     # Clean metadata and clear caches
@@ -125,7 +126,7 @@ RUN composer config platform.php ${PHP_VERSION}
 # Install Dependeinces
 ## * Platform requirments are checked at the later steps.
 ## * Scripts and Autoload are run at later steps.
-RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-scripts --no-autoloader --prefer-dist --no-dev
+RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-scripts --no-dev --no-autoloader --prefer-dist
 
 # ======================================================================================================================
 # ==============================================  PRODUCTION IMAGE  ====================================================
@@ -143,10 +144,10 @@ COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
 COPY --chown=www-data:www-data . .
 
 # 1. Dump optimzed autoload for vendor and app classes.
-# 2. --no-scripts as scripts are run on runtime via entrypoint.
-# 3. checks that PHP and extensions versions match the platform requirements of the installed packages.
-RUN composer dump-autoload -n --optimize --no-scripts --no-dev --classmap-authoritative && \
+# 2. checks that PHP and extensions versions match the platform requirements of the installed packages.
+RUN composer dump-autoload -n --optimize --no-dev --apcu && \
     composer check-platform-reqs && \
+    composer run-script -n post-install-cmd && \
     post-build
 
 ENTRYPOINT ["entrypoint-prod"]
@@ -188,14 +189,6 @@ COPY docker/php/dev-*   $PHP_INI_DIR/conf.d/
 
 # Run as non-root
 USER www-data
-
-# Copy Vendor And Generate Autoload ( Needs Composer.* to check reqs and generate autoload)
-COPY --chown=www-data:www-data composer.json composer.json
-COPY --chown=www-data:www-data composer.lock composer.lock
-COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
-RUN composer install --no-scripts && composer dump-autoload -n --no-scripts && \
-    composer check-platform-reqs && \
-    post-build
 
 # Entrypoints
 ENTRYPOINT ["entrypoint-dev"]
