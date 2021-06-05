@@ -206,6 +206,10 @@ In `docker/` directory there is `post-build` and `post-install` scripts that are
 2. Why `debian` based image not `alpine` ?
     
     1. While a smaller image is very desired, and PHP image is infamous of being big. Alpine lacks a lot of packages (Available via `apk`) that a typical PHP would need. Some packages are not even available for alpine as they link to glibc not musl.
+    2. The image is `alpine` compatible, even the entrypoint and helper scripts are `sh` compatible, modifying the image to use `alpine` variant is possible with minimal changes to the image, you'll need to install the same package you're already using but for `alpine` and using `apk`.  
+3. Image Build Fails as it try to connect to DB.
+    
+    - A typical application in most Frameworks comes with `Doctrine` ORM, Doctrine if not configured with a DB Version, will try to access the DB at php's script initialization (even at the post-install cmd's), and it will fail when it cannot connect to DB. Make sure you configure doctrine to avoid this extra DB Check connection.
 
 
 # License 
