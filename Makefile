@@ -2,7 +2,7 @@
 
 COMPOSE_PREFIX_CMD := DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1
 
-COMMAND ?= /bin/bash
+COMMAND ?= /bin/sh
 
 # --------------------------
 
@@ -12,6 +12,9 @@ deploy:			## Deploy Prod Image
 	${COMPOSE_PREFIX_CMD} docker-compose -f docker-compose.prod.yml up --build -d
 
 up:				## Start service
+	${COMPOSE_PREFIX_CMD} docker-compose up -d
+
+build-up:       ## Start service, rebuild if necessary
 	${COMPOSE_PREFIX_CMD} docker-compose up --build -d
 
 build:			## Build The Image

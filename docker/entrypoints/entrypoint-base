@@ -3,8 +3,6 @@ set -eu
 
 # --------------------------------------------------------------------------------------------------------------------
 
-# !-- We want to only print in logs if something wrong happened, hence how below code is written. --!
-
 # Run custom ad-hoc pre-run script
 echo "► Running custom pre-run script..."
 pre-run

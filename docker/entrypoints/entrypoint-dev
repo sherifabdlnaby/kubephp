@@ -3,14 +3,14 @@ set -eu
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-echo "Checking if 'vendor' folder exists..."
-if [ -d "vendor" ]; then
-  echo "'Vendor' Folder exists, Skipping running Composer Install."
-  echo "To install new package, either run 'composer install' from inside the container via 'exec', or remove the vendor folder all together."
-else
-  echo "Vendor Folder does not exist, running composer install..."
-  composer install -n
-fi
+``# Run Composer Install ( --no-scripts to avoid time consuming cache clear)
+composer install --no-scripts
+
+# Install Public Assets if they're not generated.
+test -d "public/bundles" || composer run auto-scripts
+
+composer check-platform-reqs  && \
+post-build
 
 # Run Entrypoint and pass CMD to it (Don't forget exec)
 exec entrypoint-base "${@}"
