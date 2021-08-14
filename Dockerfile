@@ -215,7 +215,10 @@ ENV PHP_FPM_HOST "localhost"
 ENV PHP_FPM_PORT "9000"
 
 # For Documentation
-EXPOSE 80
+EXPOSE 8080
+
+# Switch User
+USER www-data
 
 # Add Healthcheck
 HEALTHCHECK CMD ["nginx-healthcheck"]
