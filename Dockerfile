@@ -4,6 +4,8 @@ ARG NGINX_VERSION="1.17.4"
 ARG COMPOSER_VERSION="2.0"
 ARG XDEBUG_VERSION="3.0.3"
 ARG COMPOSER_AUTH
+ARG IMAGE_DEPS="fcgi tini icu-dev gettext curl"
+ARG RUNTIME_DEPS="zip"
 
 # -------------------------------------------------- Composer Image ----------------------------------------------------
 
@@ -16,39 +18,42 @@ FROM composer:${COMPOSER_VERSION} as composer
 
 FROM php:${PHP_VERSION}-fpm-alpine AS base
 
+# Required Args ( inherited from start of file, or passed at build )
+ARG IMAGE_DEPS
+ARG RUNTIME_DEPS
+
 # Maintainer label
 LABEL maintainer="sherifabdlnaby@gmail.com"
 
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 
-RUN apk add --virtual runtime-deps \
-    # Needed for Image
-    fcgi=2.4.2-r1       \
-    tini=0.19.0-r0      \
-    icu-dev=67.1-r2     \
-    gettext=0.21-r0     \
-    # Needed for PHP App Code
-    zip=3.0-r9          \
-    # Needed to add Extensions to PHP ( will be deleted after the next block
-    && apk add --virtual buildtime-deps ${PHPIZE_DEPS} \
-    && apk add --virtual dev-tools curl htop bind-tools \
-    && rm -f /var/cache/apk/*
+RUN apk add --no-cache ${IMAGE_DEPS} ${RUNTIME_DEPS}
 
 # ---------------------------------------- Install / Enable PHP Extensions ---------------------------------------------
 
-# - base image has helper scripts docker-php-ext-configure, docker-php-ext-install, and docker-php-ext-enable to
-#   more easily install PHP extensions.
+#   # Needed to add Extensions to PHP ( will be deleted after install PHP Extenstions )
+RUN apk add --virtual .buildtime-deps ${PHPIZE_DEPS} \
+#  install PHP Extensions
 #   head to: https://github.com/docker-library/docs/tree/master/php#how-to-install-more-php-extensions
 #   EX: RUN docker-php-ext-install curl pdo pdo_mysql mysqli
 #   EX: RUN pecl install memcached && docker-php-ext-enable memcached
-RUN docker-php-ext-install -j$(nproc) \
+ && docker-php-ext-install -j$(nproc) \
     opcache     \
     intl        \
-    pdo_mysql
-    # Pecl Extentions
-RUN pecl install apcu-5.1.20 && \
-    docker-php-ext-enable apcu
+    pdo_mysql   \
+# Pecl Extentions
 #   EX: RUN pecl install memcached && docker-php-ext-enable memcached
+ && pecl install apcu-5.1.20 \
+ && docker-php-ext-enable apcu \
+# Delete buildtime-deps
+ && apk del -f .buildtime-deps
+
+# ------------------------------------------------- Permissions --------------------------------------------------------
+
+# - Clean bundled config/users & recreate them with UID 1000 for docker compatability in dev container.
+# - Create composer directories (since we run as non-root later)
+RUN deluser --remove-home www-data && adduser -u1000 -D www-data && rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
+    mkdir -p /var/www/.composer /app && chown -R www-data:www-data /app /var/www/.composer
 
 # ------------------------------------------------ PHP Configuration ---------------------------------------------------
 
@@ -60,23 +65,20 @@ COPY docker/php/base-*   $PHP_INI_DIR/conf.d
 
 # ---------------------------------------------- PHP FPM Configuration -------------------------------------------------
 
-# Clean bundled config/users & recreate them & create composer directories (since we run as non-root later)
-RUN deluser --remove-home www-data && adduser -u1000 -D www-data && rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
-    mkdir -p /var/www/.composer /var/www/app && chown -R www-data:www-data /var/www/app /var/www/.composer
-
-# Copy scripts and PHP-FPM config
+# PHP-FPM config
 COPY docker/fpm/*.conf  /usr/local/etc/php-fpm.d/
+
 
 # --------------------------------------------------- Scripts ----------------------------------------------------------
 
-COPY docker/entrypoints             /usr/local/bin/
-COPY docker/healthcheck             /usr/local/bin/
-COPY docker/post-build              /usr/local/bin/
-COPY docker/pre-run                 /usr/local/bin/
-COPY docker/command-loop            /usr/local/bin/
-COPY docker/fpm/fpm-healthcheck     /usr/local/bin/
-RUN  chmod +x /usr/local/bin/entrypoint-* /usr/local/bin/post-build /usr/local/bin/command-loop /usr/local/bin/pre-run \
-              /usr/local/bin/*healthcheck
+COPY docker/healthcheck-*       \
+     docker/*-base              \
+     docker/pre-run             \
+     docker/command-loop        \
+     # to
+     /usr/local/bin/
+
+RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-* /usr/local/bin/command-loop /usr/local/bin/pre-run
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
@@ -84,21 +86,19 @@ COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 # ----------------------------------------------------- MISC -----------------------------------------------------------
 
-WORKDIR /var/www/app
+WORKDIR /app
+USER www-data
+
+# Common PHP Frameworks Env Variables
 ENV APP_ENV prod
 ENV APP_DEBUG 0
 
-
-
-# Validate FPM config
-# Run as non-root
-USER www-data
+# Validate FPM config (must use the non-root user)
 RUN php-fpm -t
-USER root
 
 # ---------------------------------------------------- HEALTH ----------------------------------------------------------
 
-HEALTHCHECK CMD ["healthcheck"]
+HEALTHCHECK CMD ["healthcheck-liveness"]
 
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
@@ -126,9 +126,7 @@ COPY composer.lock composer.lock
 RUN composer config platform.php ${PHP_VERSION}
 
 # Install Dependeinces
-## * Platform requirments are checked at the later steps.
-## * Scripts and Autoload are run at later steps.
-RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-scripts --no-dev --no-autoloader --prefer-dist
+RUN composer install -n --no-progress --ignore-platform-reqs --no-dev --prefer-dist --no-scripts --no-autoloader
 
 # ======================================================================================================================
 # ==============================================  PRODUCTION IMAGE  ====================================================
@@ -137,29 +135,28 @@ RUN composer install -n --no-progress --ignore-platform-reqs --no-plugins --no-s
 
 FROM base AS app
 
-# Clean Up Build Time Deps after we installed all PHP Extensions
-RUN apk del -f buildtime-deps dev-tools
+USER root
 
-# ----------------------------------------------- NON-ROOT SWITCH ------------------------------------------------------
+# Copy Prod Scripts
+COPY docker/*-prod /usr/local/bin/
+RUN  chmod +x /usr/local/bin/*-prod
+
+# Copy PHP Production Configuration
+COPY docker/php/prod-*   $PHP_INI_DIR/conf.d/
 
 USER www-data
 
-COPY docker/php/prod-*   $PHP_INI_DIR/conf.d/
+# ----------------------------------------------- Production Config -----------------------------------------------------
 
 # Copy Vendor
-COPY --chown=www-data:www-data --from=vendor /app/vendor /var/www/app/vendor
+COPY --chown=www-data:www-data --from=vendor /app/vendor /app/vendor
 
 # Copy App Code
 COPY --chown=www-data:www-data . .
 
-# 1. Dump optimzed autoload for vendor and app classes.
-# 2. run the post autload, and pust intsall commands in order
-# 3. checks that PHP and extensions versions match the platform requirements of the installed packages.
-RUN composer dump-autoload -n --no-scripts --optimize --apcu && \
-    composer run-script -n post-install-cmd   && \
-#   composer run-script -n post-autoload-cmd  && \
-    composer check-platform-reqs && \
-    post-build
+# Run Composer Install again
+# ( this time to run post-install scripts, autoloader, and post-autoload scripts using one command )
+RUN post-build-base && post-build-prod
 
 ENTRYPOINT ["entrypoint-prod"]
 CMD ["php-fpm"]
@@ -175,19 +172,27 @@ ARG XDEBUG_VERSION
 ENV APP_ENV dev
 ENV APP_DEBUG 1
 
+# Switch root to install stuff
+USER root
+
 # ---------------------------------------------------- Xdebug ----------------------------------------------------------
 
-RUN pecl install xdebug-${XDEBUG_VERSION} && docker-php-ext-enable xdebug
+RUN apk add --virtual .buildtime-deps ${PHPIZE_DEPS} \
+ && pecl install xdebug-${XDEBUG_VERSION} && docker-php-ext-enable xdebug \
+ && apk del -f .buildtime-deps
+
+# ----------------------------------------  ---------- Scripts ---------------------------------------------------------
+
+# Copy Dev Scripts
+COPY docker/*-dev /usr/local/bin/
+RUN  chmod +x /usr/local/bin/*-dev
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 COPY docker/php/dev-*   $PHP_INI_DIR/conf.d/
 
-# ----------------------------------------------- NON-ROOT SWITCH ------------------------------------------------------
-
 USER www-data
-
 # ------------------------------------------------- Entry Point --------------------------------------------------------
 
 # Entrypoints
@@ -202,12 +207,10 @@ CMD ["php-fpm"]
 # ======================================================================================================================
 FROM nginx:${NGINX_VERSION}-alpine AS nginx
 
-RUN rm -rf /var/www/* /etc/nginx/conf.d/* /usr/local/etc/php-fpm.d/* && \
-    adduser -u 1000 -D -S -G www-data www-data
-
+RUN rm -rf /var/www/* /etc/nginx/conf.d/* && adduser -u 1000 -D -S -G www-data www-data
 COPY docker/nginx/nginx-*   /usr/local/bin/
 COPY docker/nginx/          /etc/nginx/
-RUN chmod +x /usr/local/bin/nginx-*
+RUN chown -R www-data /etc/nginx/ && chmod +x /usr/local/bin/nginx-*
 
 # The PHP-FPM Host
 ## Localhost is the sensible default assuming image run on a k8S Pod
@@ -233,7 +236,7 @@ ENTRYPOINT ["nginx-entrypoint"]
 FROM nginx AS web
 
 # Copy Public folder + Assets that's going to be served from Nginx
-COPY --chown=www-data:www-data --from=app /var/www/app/public /var/www/app/public
+COPY --chown=www-data:www-data --from=app /app/public /app/public
 
 # ----------------------------------------------------- NGINX ----------------------------------------------------------
 FROM nginx AS web-dev

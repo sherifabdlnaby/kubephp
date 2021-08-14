@@ -11,7 +11,7 @@ services:
         COMPOSER_AUTH: "{}"
     restart: unless-stopped
     volumes:
-      - .:/var/www/app
+      - .:/app
 
   web:
     build:
@@ -24,4 +24,4 @@ services:
       # The Hostname for the FPM (needs to match the hostname for the `app`)
       PHP_FPM_HOST: app
     volumes:
-      - ./public:/var/www/app/public
+      - ./public:/app/public
