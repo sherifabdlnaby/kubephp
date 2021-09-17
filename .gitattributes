@@ -1,0 +1,6 @@
+docker-healthcheck text eol=lf
+*.sh text eol=lf
+docker/*-base linguist-language=Dockerfile
+docker/*-prod linguist-language=Dockerfile
+docker/*-dev linguist-language=Dockerfile
+Makefile linguist-vendored
