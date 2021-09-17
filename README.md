@@ -185,12 +185,15 @@ In `docker/` directory there is `post-build-*` and `pre-run-*` scripts that are 
 
 1. Why two containers instead of one ?
 
-    1. In containerized environment, you need to only run one process inside the container. This allows us to better instrument our application for many reasons like separation of health status, metrics, logs, etc.
+    -  In containerized environment, you need to only run one process inside the container. This allows us to better instrument our application for many reasons like separation of health status, metrics, logs, etc.
 
 2. Image Build Fails as it try to connect to DB.
     
     - A typical application in most Frameworks comes with `Doctrine` ORM, Doctrine if not configured with a DB Version, will try to access the DB at php's script initialization (even at the post-install cmd's), and it will fail when it cannot connect to DB. [Make sure you configure doctrine to avoid this extra DB Check connection.](https://symfony.com/doc/current/reference/configuration/doctrine.html#:~:text=The-,server_version,-option%20was%20added)
 
+3. Xdebug not working
+
+    - Xdebug is configured to work with Linux, to make it work for Mac/Windows, please change Xdebug config in `/docker/php/dev-xdebug.ini` >> `xdebug.client_host` to `host.docker.internal`.
 
 # License 
 [MIT License](https://raw.githubusercontent.com/sherifabdlnaby/kubephp/blob/master/LICENSE)
