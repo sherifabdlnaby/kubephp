@@ -25,3 +25,6 @@ services:
       PHP_FPM_HOST: app
     volumes:
       - ./public:/app/public
+    depends_on:
+      app:
+        condition: service_healthy

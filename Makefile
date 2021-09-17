@@ -8,10 +8,11 @@ COMMAND ?= /bin/sh
 
 .PHONY: build deploy start stop logs restart shell up rm help
 
-deploy:			## Deploy Prod Image
+deploy:			## Start using Prod Image in Prod Mode
 	${COMPOSE_PREFIX_CMD} docker-compose -f docker-compose.prod.yml up --build -d
 
 up:				## Start service
+	@echo "Starting Application \n (note: Web container will wait App container to start before starting)"
 	${COMPOSE_PREFIX_CMD} docker-compose up -d
 
 build-up:       ## Start service, rebuild if necessary
@@ -58,5 +59,5 @@ rm:				## Remove current container
 
 help:       	## Show this help.
 	@echo "\n\nMake Application Docker Images and Containers using Docker-Compose files"
-	@echo "Make sure you are using \033[0;32mDocker Version >= 20.1\033[0m & \033[0;32mDocker-Compose >= 18.06\033[0m "
+	@echo "Make sure you are using \033[0;32mDocker Version >= 20.1\033[0m & \033[0;32mDocker-Compose >= 1.27\033[0m "
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m ENV=<prod|dev> (default: dev)\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)

@@ -7,9 +7,10 @@ echo "► Starting Production Entrypoint..."
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-## Run Envsubst on .env to expand embedded Env Variables
-#echo "► Expanding Dotenv files with Environment Variables..."
-#for f in $(find . -name ".env*"); do cat $f | envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" > "$f"; done
+# Run custom ad-hoc pre-run script
+echo "► Running custom pre-run (base) script..."
+pre-run-prod
+echo "✔ Successful"
 
 # ----------------------------------------------------------------------------------------------------------------------
 

@@ -71,14 +71,13 @@ COPY docker/fpm/*.conf  /usr/local/etc/php-fpm.d/
 
 # --------------------------------------------------- Scripts ----------------------------------------------------------
 
-COPY docker/healthcheck-*       \
-     docker/*-base              \
-     docker/pre-run             \
-     docker/command-loop        \
+COPY docker/*-base          \
+     docker/healthcheck-*   \
+     docker/command-loop    \
      # to
      /usr/local/bin/
 
-RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-* /usr/local/bin/command-loop /usr/local/bin/pre-run
+RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-* /usr/local/bin/command-loop
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
