@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+echo "► Starting Production Entrypoint..."
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Run custom ad-hoc pre-run script
+echo "► Running custom pre-run (base) script..."
+pre-run-prod
+echo "✔ Successful"
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Run Entrypoint and pass CMD to it (Don't forget exec)
+exec entrypoint-base "${@}"
