@@ -27,26 +27,38 @@ LABEL maintainer="sherifabdlnaby@gmail.com"
 
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 
-RUN apk add --no-cache ${IMAGE_DEPS} ${RUNTIME_DEPS}
+RUN IMAGE_DEPS="tini gettext"; \
+    RUNTIME_DEPS="fcgi"; \
+    apk add --no-cache ${IMAGE_DEPS} ${RUNTIME_DEPS}
 
 # ---------------------------------------- Install / Enable PHP Extensions ---------------------------------------------
 
-#   # Needed to add Extensions to PHP ( will be deleted after install PHP Extenstions )
-RUN apk add --virtual .buildtime-deps ${PHPIZE_DEPS} \
-#  install PHP Extensions
-#   head to: https://github.com/docker-library/docs/tree/master/php#how-to-install-more-php-extensions
-#   EX: RUN docker-php-ext-install curl pdo pdo_mysql mysqli
-#   EX: RUN pecl install memcached && docker-php-ext-enable memcached
+
+RUN apk add --no-cache --virtual .build-deps \
+      $PHPIZE_DEPS  \
+      libzip-dev    \
+      icu-dev       \
+ # PHP Extensions --------------------------------- \
  && docker-php-ext-install -j$(nproc) \
-    opcache     \
-    intl        \
-    pdo_mysql   \
-# Pecl Extentions
-#   EX: RUN pecl install memcached && docker-php-ext-enable memcached
- && pecl install apcu-5.1.20 \
- && docker-php-ext-enable apcu \
-# Delete buildtime-deps
- && apk del -f .buildtime-deps
+      opcache     \
+      intl        \
+      pdo_mysql   \
+      zip         \
+ # Pecl Extensions -------------------------------- \
+ && pecl install apcu-5.1.20 && docker-php-ext-enable apcu \
+ # Cleanup ---------------------------------------- \
+ # - Detect Runtime Dependencies of the installed extensions. \
+ # - src: https://github.com/docker-library/wordpress/blob/master/latest/php7.4/fpm-alpine/Dockerfile \
+ && runDeps="$( \
+		scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
+			| tr ',' '\n' \
+			| sort -u \
+			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+	)"; \
+  # Save Runtime Deps in a virtual deps
+	apk add --no-network --virtual .php-extensions-rundeps $runDeps; \
+  # Uninstall Everything we Installed (minus the runtime Deps)
+	apk del --no-network .build-deps
 
 # ------------------------------------------------- Permissions --------------------------------------------------------
 
