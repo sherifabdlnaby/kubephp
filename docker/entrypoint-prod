@@ -10,7 +10,6 @@ echo "► Starting Production Entrypoint..."
 # Run custom ad-hoc pre-run script
 echo "► Running custom pre-run (prod) script..."
 pre-run-prod
-echo "✔ Successful"
 
 # ----------------------------------------------------------------------------------------------------------------------
 
