@@ -40,12 +40,15 @@ RUN apk add --no-cache --virtual .build-deps \
       icu-dev       \
  # PHP Extensions --------------------------------- \
  && docker-php-ext-install -j$(nproc) \
-      opcache     \
       intl        \
+      opcache     \
       pdo_mysql   \
       zip         \
  # Pecl Extensions -------------------------------- \
  && pecl install apcu-5.1.20 && docker-php-ext-enable apcu \
+ # ---------------------------------------------------------------------
+ # Install Xdebug at this step to make editing dev image cache-friendly, we delete xdebug from production image later
+ && pecl install xdebug-${XDEBUG_VERSION} \
  # Cleanup ---------------------------------------- \
  # - Detect Runtime Dependencies of the installed extensions. \
  # - src: https://github.com/docker-library/wordpress/blob/master/latest/php7.4/fpm-alpine/Dockerfile \
@@ -148,9 +151,9 @@ FROM base AS app
 
 USER root
 
-# Copy Prod Scripts
+# Copy Prod Scripts && delete xdebug
 COPY docker/*-prod /usr/local/bin/
-RUN  chmod +x /usr/local/bin/*-prod
+RUN  chmod +x /usr/local/bin/*-prod && pecl uninstall xdebug
 
 # Copy PHP Production Configuration
 COPY docker/php/prod-*   $PHP_INI_DIR/conf.d/
@@ -186,11 +189,10 @@ ENV APP_DEBUG 1
 # Switch root to install stuff
 USER root
 
-# ---------------------------------------------------- Xdebug ----------------------------------------------------------
-
-RUN apk add --virtual .buildtime-deps ${PHPIZE_DEPS} \
- && pecl install xdebug-${XDEBUG_VERSION} && docker-php-ext-enable xdebug \
- && apk del -f .buildtime-deps
+# For Composer Installs
+RUN apk add git openssh
+# Enable Xdebug
+RUN docker-php-ext-enable xdebug
 
 # ----------------------------------------  ---------- Scripts ---------------------------------------------------------
 
