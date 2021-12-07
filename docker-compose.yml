@@ -10,6 +10,11 @@ services:
         # Please add Composer Auth JSON Object
         COMPOSER_AUTH: "{}"
     restart: unless-stopped
+    environment:
+      # For Xdebuger to work, it needs the docker host ID
+      # - in Mac AND Windows, `host.docker.internal` resolve to Docker host IP
+      # - in Linux, `172.17.0.1` is the host IP
+      XDEBUG_CLIENT_HOST: 'host.docker.internal'
     volumes:
       - .:/app
 

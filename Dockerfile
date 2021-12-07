@@ -4,9 +4,6 @@ ARG NGINX_VERSION="1.17.4"
 ARG COMPOSER_VERSION="2.0"
 ARG XDEBUG_VERSION="3.0.3"
 ARG COMPOSER_AUTH
-ARG IMAGE_DEPS="fcgi tini icu-dev gettext curl"
-ARG RUNTIME_DEPS="zip"
-
 # -------------------------------------------------- Composer Image ----------------------------------------------------
 
 FROM composer:${COMPOSER_VERSION} as composer
@@ -19,8 +16,7 @@ FROM composer:${COMPOSER_VERSION} as composer
 FROM php:${PHP_VERSION}-fpm-alpine AS base
 
 # Required Args ( inherited from start of file, or passed at build )
-ARG IMAGE_DEPS
-ARG RUNTIME_DEPS
+ARG XDEBUG_VERSION
 
 # Maintainer label
 LABEL maintainer="sherifabdlnaby@gmail.com"
@@ -182,7 +178,7 @@ CMD ["php-fpm"]
 
 FROM base as app-dev
 
-ARG XDEBUG_VERSION
+
 ENV APP_ENV dev
 ENV APP_DEBUG 1
 
@@ -190,9 +186,14 @@ ENV APP_DEBUG 1
 USER root
 
 # For Composer Installs
-RUN apk add git openssh
-# Enable Xdebug
-RUN docker-php-ext-enable xdebug
+RUN apk add git openssh;
+ # Enable Xdebug
+ docker-php-ext-enable xdebug; \
+
+# For Xdebuger to work, it needs the docker host ID
+# - in Mac AND Windows, `host.docker.internal` resolve to Docker host IP
+# - in Linux, `172.17.0.1` is the host IP
+ENV XDEBUG_CLIENT_HOST="host.docker.internal"
 
 # ----------------------------------------  ---------- Scripts ---------------------------------------------------------
 
@@ -229,6 +230,7 @@ RUN chown -R www-data /etc/nginx/ && chmod +x /usr/local/bin/nginx-*
 ## Localhost is the sensible default assuming image run on a k8S Pod
 ENV PHP_FPM_HOST "localhost"
 ENV PHP_FPM_PORT "9000"
+ENV NGINX_LOG_FORMAT "json"
 
 # For Documentation
 EXPOSE 8080
@@ -253,4 +255,5 @@ COPY --chown=www-data:www-data --from=app /app/public /app/public
 
 # ----------------------------------------------------- NGINX ----------------------------------------------------------
 FROM nginx AS web-dev
-## Place holder to have a consistent naming.
+
+ENV NGINX_LOG_FORMAT "combined"
