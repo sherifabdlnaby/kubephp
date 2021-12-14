@@ -186,9 +186,9 @@ ENV APP_DEBUG 1
 USER root
 
 # For Composer Installs
-RUN apk add git openssh;
+RUN apk add git openssh; \
  # Enable Xdebug
- docker-php-ext-enable xdebug; \
+ docker-php-ext-enable xdebug
 
 # For Xdebuger to work, it needs the docker host ID
 # - in Mac AND Windows, `host.docker.internal` resolve to Docker host IP
