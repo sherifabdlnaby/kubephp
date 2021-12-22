@@ -9,7 +9,7 @@ echo "► Starting Main Entrypoint..."
 
 # Run custom ad-hoc pre-run script
 echo "► Running custom pre-run (base) script..."
-pre-run-base
+pre-run-base.sh
 
 # ----------------------------------------------------------------------------------------------------------------------
 
