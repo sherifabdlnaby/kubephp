@@ -1,4 +1,7 @@
 docker-healthcheck text eol=lf
+*.sh text eol=lf
+*.conf text eol=lf
+*.* text eol=lf
 * text eol=lf
 docker/*-base linguist-language=Dockerfile
 docker/*-prod linguist-language=Dockerfile
