@@ -4,6 +4,7 @@ COMPOSE_PREFIX_CMD := DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1
 
 COMMAND ?= /bin/sh
 
+SYMFONY_VERSION := "^5.4"
 # --------------------------
 
 .PHONY: build deploy start stop logs restart shell up rm help
@@ -20,6 +21,15 @@ build-up:       ## Start service, rebuild if necessary
 
 build:			## Build The Image
 	${COMPOSE_PREFIX_CMD} docker-compose build
+
+sf-install:		## Install framework symfony
+	${COMPOSE_PREFIX_CMD} docker-compose exec app composer create-project symfony/website-skeleton:${SYMFONY_VERSION} /app
+
+sf-api-install:	## Install framework symfony api
+	${COMPOSE_PREFIX_CMD} docker-compose exec app composer create-project symfony/skeleton:${SYMFONY_VERSION} /app
+
+lv-install:		## Install framework laravel
+	${COMPOSE_PREFIX_CMD} docker-compose exec app composer create-project symfony/skeleton:${SYMFONY_VERSION} /app
 
 down:			## Down service and do clean up
 	${COMPOSE_PREFIX_CMD} docker-compose down
@@ -46,10 +56,10 @@ command-root:	 ## Execute command as root ( make command-root COMMAND=<command> 
 	@${COMPOSE_PREFIX_CMD} docker-compose run --rm app ${COMMAND}
 
 shell-root:			## Enter container shell as root
-	@${COMPOSE_PREFIX_CMD} docker-compose exec -u root app /bin/bash
+	@${COMPOSE_PREFIX_CMD} docker-compose exec -u root app /bin/sh
 
 shell:			## Enter container shell
-	@${COMPOSE_PREFIX_CMD} docker-compose exec app /bin/bash
+	@${COMPOSE_PREFIX_CMD} docker-compose exec app /bin/sh
 
 restart:		## Restart container
 	@${COMPOSE_PREFIX_CMD} docker-compose restart

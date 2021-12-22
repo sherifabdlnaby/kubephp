@@ -1,7 +1,7 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
-ARG PHP_VERSION="8.1"
+ARG PHP_VERSION="8.0"
 ARG NGINX_VERSION="1.17.4"
-ARG COMPOSER_VERSION="2.0"
+ARG COMPOSER_VERSION="2.2"
 ARG COMPOSER_AUTH
 # -------------------------------------------------- Composer Image ----------------------------------------------------
 
@@ -157,10 +157,6 @@ COPY --chown=www-data:www-data --from=vendor /app/vendor /app/vendor
 
 # Copy App Code
 COPY --chown=www-data:www-data ./app .
-
-# Run Composer Install again
-# ( this time to run post-install scripts, autoloader, and post-autoload scripts using one command )
-RUN post-build-base.sh && post-build-prod.sh
 
 ENTRYPOINT ["entrypoint-prod.sh"]
 CMD ["php-fpm"]
