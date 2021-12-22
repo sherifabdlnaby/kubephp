@@ -7,8 +7,8 @@ echo "► Starting Development Entrypoint..."
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-FILE1=/app/composer.json
-FILE2=/app/composer.lock
+FILE1=/application/composer.json
+FILE2=/application/composer.lock
 
 if [[ -f "$FILE1" && -f "$FILE2" ]]; then
     echo "► Running 'post-build-base && post-build-dev' script(s)..."
