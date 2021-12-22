@@ -1,7 +1,7 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
-ARG PHP_VERSION="8.1"
+ARG PHP_VERSION="8.0"
 ARG NGINX_VERSION="1.17.4"
-ARG COMPOSER_VERSION="2.0"
+ARG COMPOSER_VERSION="2.2"
 ARG COMPOSER_AUTH
 # -------------------------------------------------- Composer Image ----------------------------------------------------
 
@@ -59,7 +59,7 @@ RUN apk add --no-cache --virtual .build-deps \
 # - Clean bundled config/users & recreate them with UID 1000 for docker compatability in dev container.
 # - Create composer directories (since we run as non-root later)
 RUN deluser --remove-home www-data && adduser -u1000 -D www-data && rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
-    mkdir -p /var/www/.composer /app && chown -R www-data:www-data /app /var/www/.composer
+    mkdir -p /var/www/.composer /application && chown -R www-data:www-data /application /var/www/.composer
 
 # ------------------------------------------------ PHP Configuration ---------------------------------------------------
 
@@ -90,7 +90,7 @@ COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 # ----------------------------------------------------- MISC -----------------------------------------------------------
 
-WORKDIR /app
+WORKDIR /application
 USER www-data
 
 # Common PHP Frameworks Env Variables
@@ -123,8 +123,8 @@ ARG COMPOSER_AUTH
 ENV COMPOSER_AUTH $COMPOSER_AUTH
 
 # Copy Dependencies files
-COPY ./app/composer.json composer.json
-COPY ./app/composer.lock composer.lock
+COPY ./application/composer.json composer.json
+COPY ./application/composer.lock composer.lock
 
 # Set PHP Version of the Image
 RUN composer config platform.php ${PHP_VERSION}
@@ -153,14 +153,10 @@ USER www-data
 # ----------------------------------------------- Production Config -----------------------------------------------------
 
 # Copy Vendor
-COPY --chown=www-data:www-data --from=vendor /app/vendor /app/vendor
+COPY --chown=www-data:www-data --from=vendor /application/vendor /application/vendor
 
 # Copy App Code
-COPY --chown=www-data:www-data ./app .
-
-# Run Composer Install again
-# ( this time to run post-install scripts, autoloader, and post-autoload scripts using one command )
-RUN post-build-base.sh && post-build-prod.sh
+COPY --chown=www-data:www-data ./application .
 
 ENTRYPOINT ["entrypoint-prod.sh"]
 CMD ["php-fpm"]
@@ -243,7 +239,7 @@ ENTRYPOINT ["nginx-entrypoint.sh"]
 FROM nginx AS web
 
 # Copy Public folder + Assets that's going to be served from Nginx
-COPY --chown=www-data:www-data --from=app /app/public /app/public
+COPY --chown=www-data:www-data --from=app /application/public /application/public
 
 # ----------------------------------------------------- NGINX ----------------------------------------------------------
 FROM nginx AS web-dev

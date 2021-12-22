@@ -4,6 +4,9 @@ COMPOSE_PREFIX_CMD := DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1
 
 COMMAND ?= /bin/sh
 
+SYMFONY_VERSION := "^5.4"
+
+LARAVEL_VERSION := ^8.0
 # --------------------------
 
 .PHONY: build deploy start stop logs restart shell up rm help
@@ -20,6 +23,15 @@ build-up:       ## Start service, rebuild if necessary
 
 build:			## Build The Image
 	${COMPOSE_PREFIX_CMD} docker-compose build
+
+sf-install:		## Install framework symfony
+	${COMPOSE_PREFIX_CMD} docker-compose exec app composer create-project symfony/website-skeleton:${SYMFONY_VERSION} ./
+
+sf-api-install:	## Install framework symfony api
+	${COMPOSE_PREFIX_CMD} docker-compose exec app composer create-project symfony/skeleton:${SYMFONY_VERSION} ./
+
+lv-install:		## Install framework laravel
+	${COMPOSE_PREFIX_CMD} docker-compose exec app composer create-project laravel/laravel:${LARAVEL_VERSION} ./
 
 down:			## Down service and do clean up
 	${COMPOSE_PREFIX_CMD} docker-compose down
@@ -46,16 +58,22 @@ command-root:	 ## Execute command as root ( make command-root COMMAND=<command> 
 	@${COMPOSE_PREFIX_CMD} docker-compose run --rm app ${COMMAND}
 
 shell-root:			## Enter container shell as root
-	@${COMPOSE_PREFIX_CMD} docker-compose exec -u root app /bin/bash
+	@${COMPOSE_PREFIX_CMD} docker-compose exec -u root app /bin/sh
 
 shell:			## Enter container shell
-	@${COMPOSE_PREFIX_CMD} docker-compose exec app /bin/bash
+	@${COMPOSE_PREFIX_CMD} docker-compose exec app /bin/sh
 
 restart:		## Restart container
 	@${COMPOSE_PREFIX_CMD} docker-compose restart
 
 rm:				## Remove current container
 	@${COMPOSE_PREFIX_CMD} docker-compose rm -f
+
+line-convert: ## convertir ficheros a LS ¡CUIDADO! HACE RESET Y BORRA TODOS LOS CAMBIOS QUE NO HAYAN SUBIDO A GIT
+	git config core.eol lf
+	git config core.autocrlf input
+	git rm --cached -r .
+	git reset --hard  
 
 help:       	## Show this help.
 	@echo "\n\nMake Application Docker Images and Containers using Docker-Compose files"
