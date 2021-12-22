@@ -82,13 +82,13 @@ COPY docker/fpm/*.conf  /usr/local/etc/php-fpm.d/
 
 # --------------------------------------------------- Scripts ----------------------------------------------------------
 
-COPY docker/*-base          \
-     docker/healthcheck-*   \
-     docker/command-loop    \
+COPY docker/*-base.sh          \
+     docker/healthcheck-*.sh   \
+     docker/command-loop.sh    \
      # to
      /usr/local/bin/
 
-RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-* /usr/local/bin/command-loop
+RUN  chmod +x /usr/local/bin/*-base.sh /usr/local/bin/healthcheck-*.sh /usr/local/bin/command-loop.sh
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
@@ -148,8 +148,8 @@ FROM base AS app
 USER root
 
 # Copy Prod Scripts && delete xdebug
-COPY docker/*-prod /usr/local/bin/
-RUN  chmod +x /usr/local/bin/*-prod && pecl uninstall xdebug
+COPY docker/*-prod.sh /usr/local/bin/
+RUN  chmod +x /usr/local/bin/*-prod.sh && pecl uninstall xdebug
 
 # Copy PHP Production Configuration
 COPY docker/php/prod-*   $PHP_INI_DIR/conf.d/
@@ -186,9 +186,9 @@ ENV APP_DEBUG 1
 USER root
 
 # For Composer Installs
-RUN apk add git openssh; \
- # Enable Xdebug
- docker-php-ext-enable xdebug
+RUN apk add git openssh;
+# Enable Xdebug
+#  docker-php-ext-enable xdebug
 
 # For Xdebuger to work, it needs the docker host ID
 # - in Mac AND Windows, `host.docker.internal` resolve to Docker host IP
@@ -198,8 +198,8 @@ ENV XDEBUG_CLIENT_HOST="host.docker.internal"
 # ----------------------------------------  ---------- Scripts ---------------------------------------------------------
 
 # Copy Dev Scripts
-COPY docker/*-dev /usr/local/bin/
-RUN  chmod +x /usr/local/bin/*-dev
+COPY docker/*-dev.sh /usr/local/bin/
+RUN  chmod +x /usr/local/bin/*-dev.sh
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
@@ -222,9 +222,9 @@ CMD ["php-fpm"]
 FROM nginx:${NGINX_VERSION}-alpine AS nginx
 
 RUN rm -rf /var/www/* /etc/nginx/conf.d/* && adduser -u 1000 -D -S -G www-data www-data
-COPY docker/nginx/nginx-*   /usr/local/bin/
+COPY docker/nginx/nginx-*.sh   /usr/local/bin/
 COPY docker/nginx/          /etc/nginx/
-RUN chown -R www-data /etc/nginx/ && chmod +x /usr/local/bin/nginx-*
+RUN chown -R www-data /etc/nginx/ && chmod +x /usr/local/bin/nginx-*.sh
 
 # The PHP-FPM Host
 ## Localhost is the sensible default assuming image run on a k8S Pod
