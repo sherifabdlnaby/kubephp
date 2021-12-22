@@ -1,8 +1,7 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
-ARG PHP_VERSION="7.4"
+ARG PHP_VERSION="8.1"
 ARG NGINX_VERSION="1.17.4"
 ARG COMPOSER_VERSION="2.0"
-ARG XDEBUG_VERSION="3.0.3"
 ARG COMPOSER_AUTH
 # -------------------------------------------------- Composer Image ----------------------------------------------------
 
@@ -15,9 +14,6 @@ FROM composer:${COMPOSER_VERSION} as composer
 
 FROM php:${PHP_VERSION}-fpm-alpine AS base
 
-# Required Args ( inherited from start of file, or passed at build )
-ARG XDEBUG_VERSION
-
 # Maintainer label
 LABEL maintainer="sherifabdlnaby@gmail.com"
 
@@ -28,7 +24,6 @@ RUN IMAGE_DEPS="tini gettext"; \
     apk add --no-cache ${IMAGE_DEPS} ${RUNTIME_DEPS}
 
 # ---------------------------------------- Install / Enable PHP Extensions ---------------------------------------------
-
 
 RUN apk add --no-cache --virtual .build-deps \
       $PHPIZE_DEPS  \
@@ -44,7 +39,7 @@ RUN apk add --no-cache --virtual .build-deps \
  && pecl install apcu-5.1.20 && docker-php-ext-enable apcu \
  # ---------------------------------------------------------------------
  # Install Xdebug at this step to make editing dev image cache-friendly, we delete xdebug from production image later
- && pecl install xdebug-${XDEBUG_VERSION} \
+ && pecl install xdebug \
  # Cleanup ---------------------------------------- \
  # - Detect Runtime Dependencies of the installed extensions. \
  # - src: https://github.com/docker-library/wordpress/blob/master/latest/php7.4/fpm-alpine/Dockerfile \
@@ -79,16 +74,15 @@ COPY docker/php/base-*   $PHP_INI_DIR/conf.d
 # PHP-FPM config
 COPY docker/fpm/*.conf  /usr/local/etc/php-fpm.d/
 
-
 # --------------------------------------------------- Scripts ----------------------------------------------------------
 
-COPY docker/*-base          \
-     docker/healthcheck-*   \
-     docker/command-loop    \
+COPY docker/*-base.sh          \
+     docker/healthcheck-*.sh   \
+     docker/command-loop.sh    \
      # to
      /usr/local/bin/
 
-RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-* /usr/local/bin/command-loop
+RUN  chmod +x /usr/local/bin/*-base.sh /usr/local/bin/healthcheck-*.sh /usr/local/bin/command-loop.sh
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
@@ -108,11 +102,11 @@ RUN php-fpm -t
 
 # ---------------------------------------------------- HEALTH ----------------------------------------------------------
 
-HEALTHCHECK CMD ["healthcheck-liveness"]
+HEALTHCHECK CMD ["healthcheck-liveness.sh"]
 
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
-ENTRYPOINT ["entrypoint-base"]
+ENTRYPOINT ["entrypoint-base.sh"]
 CMD ["php-fpm"]
 
 # ======================================================================================================================
@@ -129,8 +123,8 @@ ARG COMPOSER_AUTH
 ENV COMPOSER_AUTH $COMPOSER_AUTH
 
 # Copy Dependencies files
-COPY composer.json composer.json
-COPY composer.lock composer.lock
+COPY ./app/composer.json composer.json
+COPY ./app/composer.lock composer.lock
 
 # Set PHP Version of the Image
 RUN composer config platform.php ${PHP_VERSION}
@@ -148,8 +142,8 @@ FROM base AS app
 USER root
 
 # Copy Prod Scripts && delete xdebug
-COPY docker/*-prod /usr/local/bin/
-RUN  chmod +x /usr/local/bin/*-prod && pecl uninstall xdebug
+COPY docker/*-prod.sh /usr/local/bin/
+RUN  chmod +x /usr/local/bin/*-prod.sh && pecl uninstall xdebug
 
 # Copy PHP Production Configuration
 COPY docker/php/prod-*   $PHP_INI_DIR/conf.d/
@@ -162,13 +156,13 @@ USER www-data
 COPY --chown=www-data:www-data --from=vendor /app/vendor /app/vendor
 
 # Copy App Code
-COPY --chown=www-data:www-data . .
+COPY --chown=www-data:www-data ./app .
 
 # Run Composer Install again
 # ( this time to run post-install scripts, autoloader, and post-autoload scripts using one command )
-RUN post-build-base && post-build-prod
+RUN post-build-base.sh && post-build-prod.sh
 
-ENTRYPOINT ["entrypoint-prod"]
+ENTRYPOINT ["entrypoint-prod.sh"]
 CMD ["php-fpm"]
 
 # ======================================================================================================================
@@ -178,7 +172,6 @@ CMD ["php-fpm"]
 
 FROM base as app-dev
 
-
 ENV APP_ENV dev
 ENV APP_DEBUG 1
 
@@ -186,9 +179,9 @@ ENV APP_DEBUG 1
 USER root
 
 # For Composer Installs
-RUN apk add git openssh; \
- # Enable Xdebug
- docker-php-ext-enable xdebug
+RUN apk add git openssh \
+# Enable Xdebug
+&& docker-php-ext-enable xdebug;
 
 # For Xdebuger to work, it needs the docker host ID
 # - in Mac AND Windows, `host.docker.internal` resolve to Docker host IP
@@ -198,8 +191,8 @@ ENV XDEBUG_CLIENT_HOST="host.docker.internal"
 # ----------------------------------------  ---------- Scripts ---------------------------------------------------------
 
 # Copy Dev Scripts
-COPY docker/*-dev /usr/local/bin/
-RUN  chmod +x /usr/local/bin/*-dev
+COPY docker/*-dev.sh /usr/local/bin/
+RUN  chmod +x /usr/local/bin/*-dev.sh
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
@@ -210,9 +203,8 @@ USER www-data
 # ------------------------------------------------- Entry Point --------------------------------------------------------
 
 # Entrypoints
-ENTRYPOINT ["entrypoint-dev"]
+ENTRYPOINT ["entrypoint-dev.sh"]
 CMD ["php-fpm"]
-
 
 # ======================================================================================================================
 # ======================================================================================================================
@@ -222,9 +214,9 @@ CMD ["php-fpm"]
 FROM nginx:${NGINX_VERSION}-alpine AS nginx
 
 RUN rm -rf /var/www/* /etc/nginx/conf.d/* && adduser -u 1000 -D -S -G www-data www-data
-COPY docker/nginx/nginx-*   /usr/local/bin/
+COPY docker/nginx/nginx-*.sh   /usr/local/bin/
 COPY docker/nginx/          /etc/nginx/
-RUN chown -R www-data /etc/nginx/ && chmod +x /usr/local/bin/nginx-*
+RUN chown -R www-data /etc/nginx/ && chmod +x /usr/local/bin/nginx-*.sh
 
 # The PHP-FPM Host
 ## Localhost is the sensible default assuming image run on a k8S Pod
@@ -239,10 +231,10 @@ EXPOSE 8080
 USER www-data
 
 # Add Healthcheck
-HEALTHCHECK CMD ["nginx-healthcheck"]
+HEALTHCHECK CMD ["nginx-healthcheck.sh"]
 
 # Add Entrypoint
-ENTRYPOINT ["nginx-entrypoint"]
+ENTRYPOINT ["nginx-entrypoint.sh"]
 
 # ======================================================================================================================
 #                                                 --- NGINX PROD ---

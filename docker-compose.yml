@@ -16,7 +16,7 @@ services:
       # - in Linux, `172.17.0.1` is the host IP
       XDEBUG_CLIENT_HOST: 'host.docker.internal'
     volumes:
-      - .:/app
+      - ./app:/app
 
   web:
     build:
@@ -29,7 +29,7 @@ services:
       # The Hostname for the FPM (needs to match the hostname for the `app`)
       PHP_FPM_HOST: app
     volumes:
-      - ./public:/app/public
+      - ./app/public:/app/public
     depends_on:
       app:
         condition: service_healthy
