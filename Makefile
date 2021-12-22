@@ -67,6 +67,10 @@ restart:		## Restart container
 rm:				## Remove current container
 	@${COMPOSE_PREFIX_CMD} docker-compose rm -f
 
+line-convert: ## convertir ficheros a LS
+	git config core.eol lf
+	git config core.autocrlf input
+
 help:       	## Show this help.
 	@echo "\n\nMake Application Docker Images and Containers using Docker-Compose files"
 	@echo "Make sure you are using \033[0;32mDocker Version >= 20.1\033[0m & \033[0;32mDocker-Compose >= 1.27\033[0m "
