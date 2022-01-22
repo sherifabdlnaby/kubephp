@@ -21,6 +21,10 @@ ARG XDEBUG_VERSION
 # Maintainer label
 LABEL maintainer="sherifabdlnaby@gmail.com"
 
+# Set SHELL flags for RUN commands to allow -e and pipefail
+# Rationale: https://github.com/hadolint/hadolint/wiki/DL4006
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 
 RUN IMAGE_DEPS="tini gettext"; \
@@ -50,10 +54,8 @@ RUN apk add --no-cache --virtual .build-deps \
  # - src: https://github.com/docker-library/wordpress/blob/master/latest/php7.4/fpm-alpine/Dockerfile \
  && runDeps="$( \
 		scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
-			| tr ',' '\n' \
-			| sort -u \
-			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
-	)"; \
+			| tr ',' '\n' | sort -u | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }'  \
+    )"; \
   # Save Runtime Deps in a virtual deps
 	apk add --no-network --virtual .php-extensions-rundeps $runDeps; \
   # Uninstall Everything we Installed (minus the runtime Deps)
