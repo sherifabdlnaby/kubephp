@@ -4,11 +4,19 @@
 
 replicaCount: 1
 
-image:
-  repository: nginx
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+app:
+  image:
+    repository: ghcr.io/eher/miniature-octo-chainsaw/app
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "master"
+
+web:
+  image:
+    repository: ghcr.io/eher/miniature-octo-chainsaw/web
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "master"
 
 imagePullSecrets: []
 nameOverride: ""
