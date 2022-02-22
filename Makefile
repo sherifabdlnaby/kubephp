@@ -43,7 +43,7 @@ command:	  ## Execute command ( make command COMMAND=<command> )
 	@${COMPOSE_PREFIX_CMD} docker-compose run --rm app ${COMMAND}
 
 command-root:	 ## Execute command as root ( make command-root COMMAND=<command> )
-	@${COMPOSE_PREFIX_CMD} docker-compose run --rm app ${COMMAND}
+	@${COMPOSE_PREFIX_CMD} docker-compose run --rm -u root app ${COMMAND}
 
 shell-root:			## Enter container shell as root
 	@${COMPOSE_PREFIX_CMD} docker-compose exec -u root app /bin/bash
