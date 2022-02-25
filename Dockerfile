@@ -52,6 +52,7 @@ RUN apk add --no-cache --virtual .build-deps \
  # Install Xdebug at this step to make editing dev image cache-friendly, we delete xdebug from production image later
  && pecl install xdebug-${XDEBUG_VERSION} \
  # Cleanup ---------------------------------------- \
+ && rm -r /tmp/pear; \
  # - Detect Runtime Dependencies of the installed extensions. \
  # - src: https://github.com/docker-library/wordpress/blob/master/latest/php8.0/fpm-alpine/Dockerfile \
     out="$(php -r 'exit(0);')"; \
@@ -152,11 +153,10 @@ WORKDIR /app
 COPY $APP_BASE_DIR/composer.json composer.json
 COPY $APP_BASE_DIR/composer.lock composer.lock
 
-# Set PHP Version of the Image
-RUN composer config platform.php ${PHP_VERSION}
-
-# Install Dependeinces
-RUN composer install -n --no-progress --ignore-platform-reqs --no-dev --prefer-dist --no-scripts --no-autoloader
+    # Set PHP Version of the Image
+RUN composer config platform.php ${PHP_VERSION}; \
+    # Install Dependencies
+    composer install -n --no-progress --ignore-platform-reqs --no-dev --prefer-dist --no-scripts --no-autoloader
 
 # ======================================================================================================================
 # ==============================================  PRODUCTION IMAGE  ====================================================
@@ -216,15 +216,16 @@ RUN apk --no-cache add git openssh; \
 # - in Linux, `172.17.0.1` is the host IP
 ENV XDEBUG_CLIENT_HOST="host.docker.internal"
 
-# ----------------------------------------  ---------- Scripts ---------------------------------------------------------
+# ---------------------------------------------------- Scripts ---------------------------------------------------------
 
 # Copy Dev Scripts
 COPY docker/*-dev /usr/local/bin/
-RUN  chmod +x /usr/local/bin/*-dev
+RUN chmod +x /usr/local/bin/*-dev; \
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
-RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+    mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini" \
+
 COPY docker/php/dev-*   $PHP_INI_DIR/conf.d/
 
 USER www-data
