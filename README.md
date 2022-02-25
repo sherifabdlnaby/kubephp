@@ -9,10 +9,10 @@
 		<img src="https://img.shields.io/github/v/tag/sherifabdlnaby/kubephp?label=release&amp;sort=semver">
     </a>
 	<a>
-		<img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat" alt="contributions welcome">
+		<img src="https://github.com/sherifabdlnaby/kubephp/actions/workflows/build-test-scan.yml/badge.svg" alt="Build">
 	</a>
 	<a>
-		<img src="https://img.shields.io/badge/PHP-%3E=7-blueviolet" alt="PHP >=7^">
+		<img src="https://img.shields.io/badge/PHP-%3E%3D7%5E%20%7C%20%3E%3D8%5E-%23777BB4?logo=php" alt="PHP >=7^ | >=8^ ">
 	</a>
 	<a href="https://github.com/sherifabdlnaby/kubephp/network">
 		<img src="https://img.shields.io/github/forks/sherifabdlnaby/kubephp.svg" alt="GitHub forks">
@@ -22,6 +22,9 @@
 	</a>
 	<a href="https://raw.githubusercontent.com/sherifabdlnaby/kubephp/blob/master/LICENSE">
 		<img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="GitHub license">
+	</a>
+	<a>
+		<img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat" alt="contributions welcome">
 	</a>
 </p>
 

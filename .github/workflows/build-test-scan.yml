@@ -1,0 +1,57 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+# A sample workflow which checks out the code, builds a container
+# image using Docker and scans that image for vulnerabilities using
+# Snyk. The results are then uploaded to GitHub Security Code Scanning
+#
+# For more examples, including how to limit scans to only high-severity
+# issues, monitor images for newly disclosed vulnerabilities in Snyk and
+# fail PR checks for new vulnerabilities, see https://github.com/snyk/actions/
+
+name: Build, Test, and Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ main ]
+  schedule:
+    - cron: '41 5 * * 5'
+
+env:
+  APP_BASE_DIR: "./app"
+
+jobs:
+  Build-Test-Scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Demo App
+        uses: php-actions/composer@v6
+        with:
+          dev: no
+          command: create-project
+          args: --no-install --no-scripts symfony/symfony-demo app
+          php_version: 7.4
+      - name: Build & Deploy
+        run: make deploy
+      - name: Test the App Startup
+        run: sleep 5 && curl localhost:8080 -I
+      - name: Run Snyk to check Docker image for vulnerabilities
+        # Snyk can be used to break the build when it detects vulnerabilities.
+        # In this case we want to upload the issues to GitHub Code Scanning
+        continue-on-error: true
+        uses: snyk/actions/docker@14818c4695ecc4045f33c9cee9e795a788711ca4
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: kubephp_app:latest kubephp_web:latest
+          args: --file=Dockerfile --print-deps
+      - name: Upload result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: snyk.sarif

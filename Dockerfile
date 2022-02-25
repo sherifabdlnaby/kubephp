@@ -1,9 +1,11 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
 ARG PHP_VERSION="7.4"
-ARG NGINX_VERSION="1.17.4"
-ARG COMPOSER_VERSION="2.0"
-ARG XDEBUG_VERSION="3.0.3"
+ARG NGINX_VERSION="1.20.1"
+ARG COMPOSER_VERSION="2"
+ARG XDEBUG_VERSION="3.1.3"
 ARG COMPOSER_AUTH
+ARG APP_BASE_DIR="."
+
 # -------------------------------------------------- Composer Image ----------------------------------------------------
 
 FROM composer:${COMPOSER_VERSION} as composer
@@ -45,21 +47,34 @@ RUN apk add --no-cache --virtual .build-deps \
       pdo_mysql   \
       zip         \
  # Pecl Extensions -------------------------------- \
- && pecl install apcu-5.1.20 && docker-php-ext-enable apcu \
+ && pecl install apcu && docker-php-ext-enable apcu \
  # ---------------------------------------------------------------------
  # Install Xdebug at this step to make editing dev image cache-friendly, we delete xdebug from production image later
  && pecl install xdebug-${XDEBUG_VERSION} \
  # Cleanup ---------------------------------------- \
+ && rm -r /tmp/pear; \
  # - Detect Runtime Dependencies of the installed extensions. \
- # - src: https://github.com/docker-library/wordpress/blob/master/latest/php7.4/fpm-alpine/Dockerfile \
- && runDeps="$( \
-		scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
-			| tr ',' '\n' | sort -u | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }'  \
-    )"; \
-  # Save Runtime Deps in a virtual deps
-	apk add --no-network --virtual .php-extensions-rundeps $runDeps; \
-  # Uninstall Everything we Installed (minus the runtime Deps)
-	apk del --no-network .build-deps
+ # - src: https://github.com/docker-library/wordpress/blob/master/latest/php8.0/fpm-alpine/Dockerfile \
+    out="$(php -r 'exit(0);')"; \
+		[ -z "$out" ]; \
+		err="$(php -r 'exit(0);' 3>&1 1>&2 2>&3)"; \
+		[ -z "$err" ]; \
+		\
+		extDir="$(php -r 'echo ini_get("extension_dir");')"; \
+		[ -d "$extDir" ]; \
+		runDeps="$( \
+			scanelf --needed --nobanner --format '%n#p' --recursive "$extDir" \
+				| tr ',' '\n' \
+				| sort -u \
+				| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+		)"; \
+		# Save Runtime Deps in a virtual deps
+		apk add --no-network --virtual .php-extensions-rundeps $runDeps; \
+		# Uninstall Everything we Installed (minus the runtime Deps)
+		apk del --no-network .build-deps; \
+		# check for output like "PHP Warning:  PHP Startup: Unable to load dynamic library 'foo' (tried: ...)
+		err="$(php --version 3>&1 1>&2 2>&3)"; 	[ -z "$err" ]
+# -----------------------------------------------
 
 # ------------------------------------------------- Permissions --------------------------------------------------------
 
@@ -126,19 +141,22 @@ FROM composer as vendor
 
 ARG PHP_VERSION
 ARG COMPOSER_AUTH
+ARG APP_BASE_DIR
+
 # A Json Object with remote repository token to clone private Repos with composer
 # Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
 ENV COMPOSER_AUTH $COMPOSER_AUTH
 
+WORKDIR /app
+
 # Copy Dependencies files
-COPY composer.json composer.json
-COPY composer.lock composer.lock
+COPY $APP_BASE_DIR/composer.json composer.json
+COPY $APP_BASE_DIR/composer.lock composer.lock
 
-# Set PHP Version of the Image
-RUN composer config platform.php ${PHP_VERSION}
-
-# Install Dependeinces
-RUN composer install -n --no-progress --ignore-platform-reqs --no-dev --prefer-dist --no-scripts --no-autoloader
+    # Set PHP Version of the Image
+RUN composer config platform.php ${PHP_VERSION}; \
+    # Install Dependencies
+    composer install -n --no-progress --ignore-platform-reqs --no-dev --prefer-dist --no-scripts --no-autoloader
 
 # ======================================================================================================================
 # ==============================================  PRODUCTION IMAGE  ====================================================
@@ -147,6 +165,7 @@ RUN composer install -n --no-progress --ignore-platform-reqs --no-dev --prefer-d
 
 FROM base AS app
 
+ARG APP_BASE_DIR
 USER root
 
 # Copy Prod Scripts && delete xdebug
@@ -164,10 +183,10 @@ USER www-data
 COPY --chown=www-data:www-data --from=vendor /app/vendor /app/vendor
 
 # Copy App Code
-COPY --chown=www-data:www-data . .
+COPY --chown=www-data:www-data $APP_BASE_DIR/ .
 
-# Run Composer Install again
-# ( this time to run post-install scripts, autoloader, and post-autoload scripts using one command )
+## Run Composer Install again
+## ( this time to run post-install scripts, autoloader, and post-autoload scripts using one command )
 RUN post-build-base && post-build-prod
 
 ENTRYPOINT ["entrypoint-prod"]
@@ -188,7 +207,7 @@ ENV APP_DEBUG 1
 USER root
 
 # For Composer Installs
-RUN apk add git openssh; \
+RUN apk --no-cache add git openssh; \
  # Enable Xdebug
  docker-php-ext-enable xdebug
 
@@ -197,15 +216,16 @@ RUN apk add git openssh; \
 # - in Linux, `172.17.0.1` is the host IP
 ENV XDEBUG_CLIENT_HOST="host.docker.internal"
 
-# ----------------------------------------  ---------- Scripts ---------------------------------------------------------
+# ---------------------------------------------------- Scripts ---------------------------------------------------------
 
 # Copy Dev Scripts
 COPY docker/*-dev /usr/local/bin/
-RUN  chmod +x /usr/local/bin/*-dev
+RUN chmod +x /usr/local/bin/*-dev; \
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
-RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+    mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini" \
+
 COPY docker/php/dev-*   $PHP_INI_DIR/conf.d/
 
 USER www-data
@@ -255,7 +275,12 @@ FROM nginx AS web
 # Copy Public folder + Assets that's going to be served from Nginx
 COPY --chown=www-data:www-data --from=app /app/public /app/public
 
-# ----------------------------------------------------- NGINX ----------------------------------------------------------
+# ======================================================================================================================
+#                                                 --- NGINX DEV ---
+# ======================================================================================================================
 FROM nginx AS web-dev
 
 ENV NGINX_LOG_FORMAT "combined"
+
+COPY --chown=www-data:www-data docker/nginx/dev/*.conf   /etc/nginx/conf.d/
+COPY --chown=www-data:www-data docker/nginx/dev/certs/   /etc/nginx/certs/
