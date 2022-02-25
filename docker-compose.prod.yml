@@ -9,12 +9,15 @@ services:
         # To authenticate to private registry either use username / password, or Oauth key/secret / etc
         # Please add Composer Auth JSON Object
         COMPOSER_AUTH: "{}"
+        APP_BASE_DIR: ${APP_BASE_DIR-.}
     restart: unless-stopped
 
   web:
     build:
       context: .
       target: web
+      args:
+        APP_BASE_DIR: ${APP_BASE_DIR-.}
     restart: unless-stopped
     environment:
       # The Hostname for the FPM (needs to match the hostname for the `app`)
