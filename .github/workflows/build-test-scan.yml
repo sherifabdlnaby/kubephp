@@ -11,7 +11,7 @@
 # issues, monitor images for newly disclosed vulnerabilities in Snyk and
 # fail PR checks for new vulnerabilities, see https://github.com/snyk/actions/
 
-name: Snyk Container
+name: Build, Test, and Scan
 
 on:
   push:
@@ -23,7 +23,7 @@ on:
     - cron: '41 5 * * 5'
 
 jobs:
-  snyk:
+  Build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -32,10 +32,12 @@ jobs:
         with:
           dev: no
           command: create-project
-          args: symfony/symfony-demo app
+          args: --no-install --no-scripts symfony/symfony-demo app
           php_version: 7.4
-      - name: Build a Docker image
+      - name: Build & Deploy
         run: make deploy
+      - name: Test the App Startup
+        run: sleep 5 && curl localhost:8080 -I
       - name: Run Snyk to check Docker image for vulnerabilities
         # Snyk can be used to break the build when it detects vulnerabilities.
         # In this case we want to upload the issues to GitHub Code Scanning
@@ -47,8 +49,7 @@ jobs:
           # or you can signup for free at https://snyk.io/login
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          image: your/image-to-test
-          args: --file=Dockerfile
+          image: kubephp_app:latest kubephp_web:latest
       - name: Upload result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v1
         with:

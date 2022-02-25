@@ -1,6 +1,6 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
 ARG PHP_VERSION="7.4"
-ARG NGINX_VERSION="1.17.4"
+ARG NGINX_VERSION="1.20.1"
 ARG COMPOSER_VERSION="2"
 ARG XDEBUG_VERSION="3.1.3"
 ARG COMPOSER_AUTH

@@ -33,3 +33,6 @@ services:
       PHP_FPM_HOST: app
     volumes:
       - ${APP_BASE_DIR-.}/public:/app/public
+    depends_on:
+      app:
+        condition: service_healthy
