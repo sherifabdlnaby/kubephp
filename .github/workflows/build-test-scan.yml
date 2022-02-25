@@ -22,6 +22,9 @@ on:
   schedule:
     - cron: '41 5 * * 5'
 
+env:
+  APP_BASE_DIR: "./app"
+
 jobs:
   Build-Test-Scan:
     runs-on: ubuntu-latest
