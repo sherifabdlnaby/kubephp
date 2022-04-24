@@ -20,5 +20,5 @@ set -e
 # Put Custom Ad-hoc scripts below:
 
 ## Run Envsubst on .env to expand embedded Env Variables
-echo "► Expanding Dotenv files with Environment Variables..."
-for f in $(find . -name ".env*"); do cat $f | envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" > "$f.tmp"; mv "$f.tmp" "$f"; done
+#echo "► Expanding Dotenv files with Environment Variables..."
+#for f in $(find . -name ".env*"); do cat $f | envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" > "$f.tmp"; mv "$f.tmp" "$f"; done

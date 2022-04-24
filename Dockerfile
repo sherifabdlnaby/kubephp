@@ -80,13 +80,11 @@ RUN apk add --no-cache --virtual .build-deps \
 
 # - Clean bundled config/users & recreate them with UID 1000 for docker compatability in dev container.
 # - Create composer directories (since we run as non-root later)
+# - Add Default Config
 RUN deluser --remove-home www-data && adduser -u1000 -D www-data && rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
-    mkdir -p /var/www/.composer /app && chown -R www-data:www-data /app /var/www/.composer
-
+    mkdir -p /var/www/.composer /app && chown -R www-data:www-data /app /var/www/.composer; \
 # ------------------------------------------------ PHP Configuration ---------------------------------------------------
-
-# Add Default Config
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+    mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 # Add in Base PHP Config
 COPY docker/php/base-*   $PHP_INI_DIR/conf.d
@@ -99,13 +97,13 @@ COPY docker/fpm/*.conf  /usr/local/etc/php-fpm.d/
 
 # --------------------------------------------------- Scripts ----------------------------------------------------------
 
-COPY docker/*-base          \
-     docker/healthcheck-*   \
-     docker/command-loop    \
+COPY docker/entrypoint/*-base docker/post-build/*-base docker/pre-run/*-base \
+     docker/fpm/healthcheck-fpm \
+     docker/command-loop        \
      # to
      /usr/local/bin/
 
-RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-* /usr/local/bin/command-loop
+RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-fpm /usr/local/bin/command-loop
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
@@ -125,7 +123,7 @@ RUN php-fpm -t
 
 # ---------------------------------------------------- HEALTH ----------------------------------------------------------
 
-HEALTHCHECK CMD ["healthcheck-liveness"]
+HEALTHCHECK CMD ["healthcheck-fpm"]
 
 # -------------------------------------------------- ENTRYPOINT --------------------------------------------------------
 
@@ -172,9 +170,6 @@ USER root
 COPY docker/*-prod /usr/local/bin/
 RUN  chmod +x /usr/local/bin/*-prod && pecl uninstall xdebug
 
-# Copy PHP Production Configuration
-COPY docker/php/prod-*   $PHP_INI_DIR/conf.d/
-
 USER www-data
 
 # ----------------------------------------------- Production Config -----------------------------------------------------
@@ -187,7 +182,9 @@ COPY --chown=www-data:www-data $APP_BASE_DIR/ .
 
 ## Run Composer Install again
 ## ( this time to run post-install scripts, autoloader, and post-autoload scripts using one command )
-RUN post-build-base && post-build-prod
+RUN composer install --optimize-autoloader --apcu-autoloader --no-dev -n --no-progress && \
+    composer check-platform-reqs && \
+    post-build-base && post-build-prod
 
 ENTRYPOINT ["entrypoint-prod"]
 CMD ["php-fpm"]
@@ -207,7 +204,7 @@ ENV APP_DEBUG 1
 USER root
 
 # For Composer Installs
-RUN apk --no-cache add git openssh; \
+RUN apk --no-cache add git openssh bash; \
  # Enable Xdebug
  docker-php-ext-enable xdebug
 
@@ -219,13 +216,13 @@ ENV XDEBUG_CLIENT_HOST="host.docker.internal"
 # ---------------------------------------------------- Scripts ---------------------------------------------------------
 
 # Copy Dev Scripts
-COPY docker/*-dev /usr/local/bin/
-RUN chmod +x /usr/local/bin/*-dev; \
-# ------------------------------------------------------ PHP -----------------------------------------------------------
-
-mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
-
 COPY docker/php/dev-*   $PHP_INI_DIR/conf.d/
+COPY docker/entrypoint/*-dev  docker/post-build/*-dev docker/pre-run/*-dev \
+     # to
+     /usr/local/bin/
+
+RUN chmod +x /usr/local/bin/*-dev; \
+    mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
 USER www-data
 # ------------------------------------------------- Entry Point --------------------------------------------------------
