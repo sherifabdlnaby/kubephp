@@ -220,11 +220,11 @@ ENV XDEBUG_CLIENT_HOST="host.docker.internal"
 
 # Copy Dev Scripts
 COPY docker/*-dev /usr/local/bin/
-RUN chmod +x /usr/local/bin/*-dev; \
+RUN chmod +x /usr/local/bin/*-dev;
 
 # ------------------------------------------------------ PHP -----------------------------------------------------------
 
-    mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini" \
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
 COPY docker/php/dev-*   $PHP_INI_DIR/conf.d/
 
