@@ -6,7 +6,8 @@ COMMAND ?= /bin/sh
 
 # --------------------------
 
-.PHONY: build deploy start stop logs restart shell up rm help
+.PHONY: deploy up build-up build down start stop logs images ps command \
+	command-root shell-root shell restart rm help
 
 deploy:			## Start using Prod Image in Prod Mode
 	${COMPOSE_PREFIX_CMD} docker-compose -f docker-compose.prod.yml up --build -d
