@@ -79,7 +79,7 @@ Your application will be split into two components.
 
 # Requirements 
 
-- [Docker 20.05 or higher](https://docs.docker.com/install/) 
+- [Docker 20.10.0 or higher](https://docs.docker.com/install/) 
 - [Docker-Compose 1.27 or higher](https://docs.docker.com/compose/install/) (optional)
 - PHP >= 7 Application
 
@@ -197,11 +197,6 @@ In `docker/` directory there is `post-build-*` and `pre-run-*` scripts that are 
       Version, will try to access the DB at php's script initialization (even at the post-install cmd's), and it will
       fail when it cannot connect to
       DB. [Make sure you configure doctrine to avoid this extra DB Check connection.](https://symfony.com/doc/current/reference/configuration/doctrine.html#:~:text=The-,server_version,-option%20was%20added)
-
-3. Xdebug not working
-
-    - Xdebug is configured to work with Linux, to make it work for Mac/Windows, please change `XDEBUG_CLIENT_HOST` env
-      variable to `host.docker.internal` in `docker-compose.yml` file.
 
 # License 
 

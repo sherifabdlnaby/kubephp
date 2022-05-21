@@ -212,9 +212,11 @@ RUN apk --no-cache add git openssh bash; \
  # Enable Xdebug
  docker-php-ext-enable xdebug
 
-# For Xdebuger to work, it needs the docker host ID
+# For Xdebuger to work, it needs the docker host IP
 # - in Mac AND Windows, `host.docker.internal` resolve to Docker host IP
 # - in Linux, `172.17.0.1` is the host IP
+# By default, `host.docker.internal` is set as extra host in docker-compose.yml, so it also works in Linux without any
+# additional setting. This env is reserved for people who want to customize their own compose configuration.
 ENV XDEBUG_CLIENT_HOST="host.docker.internal"
 
 # ---------------------------------------------------- Scripts ---------------------------------------------------------
