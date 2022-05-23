@@ -169,8 +169,8 @@ USER root
 
 # Copy Prod Scripts && delete xdebug
 COPY docker/entrypoint/*-prod docker/post-build/*-prod docker/pre-run/*-prod \
-  # to
- /usr/local/bin/
+     # to
+     /usr/local/bin/
 
 RUN  chmod +x /usr/local/bin/*-prod && pecl uninstall xdebug
 
