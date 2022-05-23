@@ -114,16 +114,17 @@ OR
 However, in an environment where CI/CD pipelines will build the image, they will need to supply some build-time arguments for the image. (tho defaults exist.)
     
     #### Build Time Arguments
-    | **ARG**            | **Description**                                                                                                                                      | **Default** |
-    |--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|
-    | `PHP_VERSION`      | PHP Version used in the Image                                                                                                                        | `7.4`     |
-    | `NGINX_VERSION`    | Nginx Version                                                                                                                                        | `1.17.4`    |
-    | `COMPOSER_VERSION` | Composer Version used in Image                                                                                                                       | `2.0`     |
-    | `COMPOSER_AUTH`    | A Json Object with Bitbucket or Github token to clone private Repos with composer.</br>[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}`        | 
-    | `RUNTIME_DEPS`     | List of all OS Packages needed for PHP Runtime | `zip`        | 
-    | `XDEBUG_VERSION`     | Xdebug Version to use in Development Image | `3.0.3`        | 
+  | **ARG**            | **Description**
+  | **Default** |
+  --------------------|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|
+  | `PHP_VERSION`      | PHP Version used in the Image | `7.4`     | | `PHP_ALPINE_VERSION`                | Alpine
+  Version for the PHP Image | `3.15`     | | `NGINX_VERSION`    | Nginx Version | `1.21`    | | `COMPOSER_VERSION` |
+  Composer Version used in Image | `2.0`     | | `COMPOSER_AUTH`    | A Json Object with Bitbucket or Github token to
+  clone private Repos with composer.</br>[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}`
+  | | `RUNTIME_DEPS`     | List of all OS Packages needed for PHP Runtime | `zip`        | | `XDEBUG_VERSION`   | Xdebug
+  Version to use in Development Image | `3.0.3`        |
 
-    #### Image Targets
+      #### Image Targets
     
     | **Target** | Env         | Desc                                                                                                                                                                                                                                                                             | Size   | Based On                      |
     |------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|-------------------------------|
@@ -136,7 +137,7 @@ However, in an environment where CI/CD pipelines will build the image, they will
 - The image is to be used as a base for your PHP application image, you should modify its Dockerfile to your needs.
 
     1. Install System Packages in the following section in the Dockerfile.
-        - List OS Packages needed in `RUNTIME_DEPS` ARG in Dockerfile header.
+        - Add OS Packages needed in `RUNTIME_DEPS` in Dockerfile.
     2. Install PHP Extensions In the following section in the Dockerfile.
     ```dockerfile
     # ---------------------------------------- Install / Enable PHP Extensions ---------------------------------------------
@@ -191,16 +192,21 @@ In `docker/` directory there is `post-build-*` and `pre-run-*` scripts that are 
     -  In containerized environment, you need to only run one process inside the container. This allows us to better instrument our application for many reasons like separation of health status, metrics, logs, etc.
 
 2. Image Build Fails as it try to connect to DB.
-    
-    - A typical application in most Frameworks comes with `Doctrine` ORM, Doctrine if not configured with a DB Version, will try to access the DB at php's script initialization (even at the post-install cmd's), and it will fail when it cannot connect to DB. [Make sure you configure doctrine to avoid this extra DB Check connection.](https://symfony.com/doc/current/reference/configuration/doctrine.html#:~:text=The-,server_version,-option%20was%20added)
+
+    - A typical scenario in most frameworks that comes with `Doctrine` ORM is that if Doctrine not configured with a DB
+      Version, will try to access the DB at php's script initialization (even at the post-install cmd's), and it will
+      fail when it cannot connect to
+      DB. [Make sure you configure doctrine to avoid this extra DB Check connection.](https://symfony.com/doc/current/reference/configuration/doctrine.html#:~:text=The-,server_version,-option%20was%20added)
 
 3. Xdebug not working
 
-    - Xdebug is configured to work with Linux, to make it work for Mac/Windows, please change Xdebug config in `/docker/php/dev-xdebug.ini` >> `xdebug.client_host` to `host.docker.internal`.
+    - Xdebug is configured to work with Linux, to make it work for Mac/Windows, please change `XDEBUG_CLIENT_HOST` env
+      variable to `host.docker.internal` in `docker-compose.yml` file.
 
 # License 
+
 [MIT License](https://raw.githubusercontent.com/sherifabdlnaby/kubephp/blob/master/LICENSE)
-Copyright (c) 2021 Sherif Abdel-Naby
+Copyright (c) 2022 Sherif Abdel-Naby
 
 # Contribution
 
