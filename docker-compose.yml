@@ -34,5 +34,4 @@ services:
     volumes:
       - ${APP_BASE_DIR-.}/public:/app/public
     depends_on:
-      app:
-        condition: service_healthy
+      - app
