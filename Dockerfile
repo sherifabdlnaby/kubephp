@@ -152,7 +152,7 @@ WORKDIR /app
 COPY $APP_BASE_DIR/composer.json composer.json
 COPY $APP_BASE_DIR/composer.lock composer.lock
 
-    # Set PHP Version of the Image
+# Set PHP Version of the Image
 RUN composer config platform.php ${PHP_VERSION}; \
     # Install Dependencies
     composer install -n --no-progress --ignore-platform-reqs --no-dev --prefer-dist --no-scripts --no-autoloader
@@ -168,7 +168,10 @@ ARG APP_BASE_DIR
 USER root
 
 # Copy Prod Scripts && delete xdebug
-COPY docker/*-prod /usr/local/bin/
+COPY docker/entrypoint/*-prod docker/post-build/*-prod docker/pre-run/*-prod \
+  # to
+ /usr/local/bin/
+
 RUN  chmod +x /usr/local/bin/*-prod && pecl uninstall xdebug
 
 USER www-data
