@@ -1,5 +1,6 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
 ARG PHP_VERSION="7.4"
+ARG PHP_ALPINE_VERSION="3.15"
 ARG NGINX_VERSION="1.20.1"
 ARG COMPOSER_VERSION="2"
 ARG XDEBUG_VERSION="3.1.3"
@@ -15,7 +16,7 @@ FROM composer:${COMPOSER_VERSION} as composer
 # ---------------  This stage install needed extenstions, plugins and add all needed configurations  -------------------
 # ======================================================================================================================
 
-FROM php:${PHP_VERSION}-fpm-alpine AS base
+FROM php:${PHP_VERSION}-fpm-alpine${PHP_ALPINE_VERSION} AS base
 
 # Required Args ( inherited from start of file, or passed at build )
 ARG XDEBUG_VERSION
