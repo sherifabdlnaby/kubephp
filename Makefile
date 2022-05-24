@@ -47,10 +47,10 @@ command-root:	 ## Execute command as root ( make command-root COMMAND=<command> 
 	@${COMPOSE_PREFIX_CMD} docker-compose run --rm -u root app ${COMMAND}
 
 shell-root:			## Enter container shell as root
-	@${COMPOSE_PREFIX_CMD} docker-compose exec -u root app /bin/bash
+	@${COMPOSE_PREFIX_CMD} docker-compose exec -u root app /bin/sh
 
 shell:			## Enter container shell
-	@${COMPOSE_PREFIX_CMD} docker-compose exec app /bin/bash
+	@${COMPOSE_PREFIX_CMD} docker-compose exec app /bin/sh
 
 restart:		## Restart container
 	@${COMPOSE_PREFIX_CMD} docker-compose restart
