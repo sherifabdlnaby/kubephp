@@ -11,11 +11,8 @@ services:
         COMPOSER_AUTH: "{}"
         APP_BASE_DIR: ${APP_BASE_DIR-.}
     restart: unless-stopped
-    environment:
-      # For Xdebuger to work, it needs the docker host ID
-      # - in Mac AND Windows, `host.docker.internal` resolve to Docker host IP
-      # - in Linux, `172.17.0.1` is the host IP
-      XDEBUG_CLIENT_HOST: ${XDEBUG_CLIENT_HOST-host.docker.internal}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ${APP_BASE_DIR-.}:/app
 

@@ -52,7 +52,7 @@
 
 ## How to use with my project ?
 
-- Copy this repository `Dockerfile`, `docker` Directory, `Makefile`, and `.dockerignore` to your application root directory and configure it to your needs.
+- Copy this repository `Dockerfile`, `docker` Directory, `Makefile`, `docker-compose.yml`, `docker-compose.prod.yml` and `.dockerignore` to your application root directory and configure it to your needs.
 
 ## How to configure image to run my project ?
 
@@ -79,7 +79,7 @@ Your application will be split into two components.
 
 # Requirements 
 
-- [Docker 20.05 or higher](https://docs.docker.com/install/) 
+- [Docker 20.10.0 or higher](https://docs.docker.com/install/) 
 - [Docker-Compose 1.27 or higher](https://docs.docker.com/compose/install/) (optional)
 - PHP >= 7 Application
 
@@ -88,7 +88,7 @@ Your application will be split into two components.
 #### 1. Add Template to your repo.
 
 1. Download This Repository
-2. Copy `Dockerfile`, `docker` Directory, `Makefile`, and `.dockerignore` Into your Application Repository.
+2. Copy `Dockerfile`, `docker` Directory, `Makefile`, `docker-compose.yml`, `docker-compose.prod.yml` and `.dockerignore` Into your Application Repository.
 
 OR
 
@@ -114,18 +114,18 @@ OR
 However, in an environment where CI/CD pipelines will build the image, they will need to supply some build-time arguments for the image. (tho defaults exist.)
     
     #### Build Time Arguments
-  | **ARG**            | **Description**
-  | **Default** |
-  --------------------|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|
-  | `PHP_VERSION`      | PHP Version used in the Image | `7.4`     | | `PHP_ALPINE_VERSION`                | Alpine
-  Version for the PHP Image | `3.15`     | | `NGINX_VERSION`    | Nginx Version | `1.21`    | | `COMPOSER_VERSION` |
-  Composer Version used in Image | `2.0`     | | `COMPOSER_AUTH`    | A Json Object with Bitbucket or Github token to
-  clone private Repos with composer.</br>[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}`
-  | | `RUNTIME_DEPS`     | List of all OS Packages needed for PHP Runtime | `zip`        | | `XDEBUG_VERSION`   | Xdebug
-  Version to use in Development Image | `3.0.3`        |
 
-      #### Image Targets
-    
+    | **ARG**              | **Description** | **Default** |
+    |----------------------|-----------------|-------------|
+    | `PHP_VERSION`        | PHP Version used in the Image | `7.4` |
+    | `PHP_ALPINE_VERSION` | Alpine Version for the PHP Image | `3.15` |
+    | `NGINX_VERSION`      | Nginx Version | `1.21` |
+    | `COMPOSER_VERSION`   | Composer Version used in Image | `2.0` |
+    | `COMPOSER_AUTH`      | A Json Object with Bitbucket or Github token to clone private Repos with composer.</br>[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}` |
+    | `XDEBUG_VERSION`     | Xdebug Version to use in Development Image | `3.1.3` |
+
+    #### Image Targets
+
     | **Target** | Env         | Desc                                                                                                                                                                                                                                                                             | Size   | Based On                      |
     |------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|-------------------------------|
     | app        | Production  | The PHP Application with immutable code/dependencies. By default starts `PHP-FPM` process listening on `9000`.  Command can be extended to run any PHP Consumer/Job, entrypoint will still start the pre-run setup and then run the supplied command.                            | ~135mb | PHP Official Image (Alpine)   |
@@ -197,11 +197,6 @@ In `docker/` directory there is `post-build-*` and `pre-run-*` scripts that are 
       Version, will try to access the DB at php's script initialization (even at the post-install cmd's), and it will
       fail when it cannot connect to
       DB. [Make sure you configure doctrine to avoid this extra DB Check connection.](https://symfony.com/doc/current/reference/configuration/doctrine.html#:~:text=The-,server_version,-option%20was%20added)
-
-3. Xdebug not working
-
-    - Xdebug is configured to work with Linux, to make it work for Mac/Windows, please change `XDEBUG_CLIENT_HOST` env
-      variable to `host.docker.internal` in `docker-compose.yml` file.
 
 # License 
 
