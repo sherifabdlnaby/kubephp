@@ -1,5 +1,5 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
-ARG PHP_VERSION="7.4"
+ARG PHP_VERSION="8.1"
 ARG PHP_ALPINE_VERSION="3.15"
 ARG NGINX_VERSION="1.21"
 ARG COMPOSER_VERSION="2"
@@ -99,12 +99,12 @@ COPY docker/fpm/*.conf  /usr/local/etc/php-fpm.d/
 # --------------------------------------------------- Scripts ----------------------------------------------------------
 
 COPY docker/entrypoint/*-base docker/post-build/*-base docker/pre-run/*-base \
-     docker/fpm/healthcheck-fpm \
-     docker/command-loop        \
+     docker/fpm/healthcheck-fpm		\
+     docker/scripts/command-loop*	\
      # to
      /usr/local/bin/
 
-RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-fpm /usr/local/bin/command-loop
+RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-fpm /usr/local/bin/command-loop*
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
