@@ -22,17 +22,26 @@ version-resolver:
   default: 'patch'
 
 categories:
+  - title: '🚀 Features'
+    labels:
+      - 'feature'
   - title: '🚀 Enhancements'
     labels:
       - 'enhancement'
-      - 'feature'
-      - 'patch'
   - title: '🐛 Bug Fixes'
     labels:
       - 'fix'
       - 'bugfix'
       - 'bug'
       - 'hotfix'
+  - title: '⬆️ Upgrades & Patches'
+    labels:
+      - 'patch'
+      - 'upgrades'
+  - title: '🔒 Security Patches'
+    labels:
+      - 'security-patch'
+      - 'security-fix'
   - title: '🤖 Automatic Updates'
     labels:
       - 'auto-update'
@@ -44,14 +53,21 @@ autolabeler:
   - label: 'chore'
     files:
       - '*.md'
+
   - label: 'enhancement'
-    title: '/enhancement/i'
+    title: '/enhancement/✨i'
 
   - label: 'bugfix'
     title: '/bugfix/i'
 
   - label: 'bug'
     title: '/🐛|🐞|fixes/i'
+
+  - label: 'security-patch'
+    title: '/🔒|security fix/i'
+
+  - label: 'upgrades'
+    title: '/⬆️|upgrade/i'
 
   - label: 'auto-update'
     title: '/🤖/i'
@@ -71,10 +87,3 @@ template: |
 
   $CHANGES
 
-replacers:
-  # Remove irrelevant information from Renovate bot
-  - search: '/(?<=---\s+)+^#.*(Renovate configuration|Configuration)(?:.|\n)*?This PR has been generated .*/gm'
-    replace: ''
-  # Remove Renovate bot banner image
-  - search: '/\[!\[[^\]]*Renovate\][^\]]*\](\([^)]*\))?\s*\n+/gm'
-    replace: ''
