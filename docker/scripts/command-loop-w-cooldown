@@ -14,7 +14,11 @@
 # This means that you can easily obtain a daemon PHP script without running in memory issues; if you run this in a Kubernetes environment this will be very powerful, since the orchestrator will take care of running the script,
 # and at the same time it will apply the proper restart policies in case of crashes. Last but not least, the signal handling will play nice with shutdown requests, like during the roll out of a new deployment.
 
-echo "Starting command: $@";
+
+cooldown=${@:1:1}
+command=${@:2}
+
+echo "Starting command: '$command' with cooldown: '$cooldown' seconds"
 
 # Send Termination to Child
 _term() {
@@ -27,7 +31,7 @@ trap _term TERM
 
 while true; do
     # Start Command in BG
-    $@ &
+    $command &
 
     # Get It's PID
     CHILD=$!
@@ -42,6 +46,5 @@ while true; do
         exit $STATUS;
     fi
 
-    # Add 0.5 Sec sleep to avoid instant shutdowns
-    sleep 0.5
+    sleep $cooldown
 done
