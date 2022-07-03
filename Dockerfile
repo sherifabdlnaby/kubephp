@@ -57,17 +57,12 @@ RUN apk add --no-cache --virtual .build-deps \
  # - Detect Runtime Dependencies of the installed extensions. \
  # - src: https://github.com/docker-library/wordpress/blob/master/latest/php8.0/fpm-alpine/Dockerfile \
     out="$(php -r 'exit(0);')"; \
-		[ -z "$out" ]; \
-		err="$(php -r 'exit(0);' 3>&1 1>&2 2>&3)"; \
-		[ -z "$err" ]; \
-		\
-		extDir="$(php -r 'echo ini_get("extension_dir");')"; \
+		[ -z "$out" ]; err="$(php -r 'exit(0);' 3>&1 1>&2 2>&3)"; \
+		[ -z "$err" ]; extDir="$(php -r 'echo ini_get("extension_dir");')"; \
 		[ -d "$extDir" ]; \
 		runDeps="$( \
 			scanelf --needed --nobanner --format '%n#p' --recursive "$extDir" \
-				| tr ',' '\n' \
-				| sort -u \
-				| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+				| tr ',' '\n' | sort -u | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
 		)"; \
 		# Save Runtime Deps in a virtual deps
 		apk add --no-network --virtual .php-extensions-rundeps $runDeps; \
