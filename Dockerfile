@@ -1,6 +1,6 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
-ARG PHP_VERSION="7.4"
-ARG PHP_ALPINE_VERSION="3.15"
+ARG PHP_VERSION="8.1"
+ARG PHP_ALPINE_VERSION="3.16"
 ARG NGINX_VERSION="1.21"
 ARG COMPOSER_VERSION="2"
 ARG XDEBUG_VERSION="3.1.3"
@@ -30,9 +30,9 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 
-RUN IMAGE_DEPS="tini gettext"; \
-    RUNTIME_DEPS="fcgi"; \
-    apk add --no-cache ${IMAGE_DEPS} ${RUNTIME_DEPS}
+RUN RUNTIME_DEPS="tini fcgi"; \
+    SECURITY_UPGRADES="curl"; \
+    apk add --no-cache --upgrade ${RUNTIME_DEPS} ${SECURITY_UPGRADES}
 
 # ---------------------------------------- Install / Enable PHP Extensions ---------------------------------------------
 
@@ -57,17 +57,12 @@ RUN apk add --no-cache --virtual .build-deps \
  # - Detect Runtime Dependencies of the installed extensions. \
  # - src: https://github.com/docker-library/wordpress/blob/master/latest/php8.0/fpm-alpine/Dockerfile \
     out="$(php -r 'exit(0);')"; \
-		[ -z "$out" ]; \
-		err="$(php -r 'exit(0);' 3>&1 1>&2 2>&3)"; \
-		[ -z "$err" ]; \
-		\
-		extDir="$(php -r 'echo ini_get("extension_dir");')"; \
+		[ -z "$out" ]; err="$(php -r 'exit(0);' 3>&1 1>&2 2>&3)"; \
+		[ -z "$err" ]; extDir="$(php -r 'echo ini_get("extension_dir");')"; \
 		[ -d "$extDir" ]; \
 		runDeps="$( \
 			scanelf --needed --nobanner --format '%n#p' --recursive "$extDir" \
-				| tr ',' '\n' \
-				| sort -u \
-				| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+				| tr ',' '\n' | sort -u | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
 		)"; \
 		# Save Runtime Deps in a virtual deps
 		apk add --no-network --virtual .php-extensions-rundeps $runDeps; \
@@ -99,12 +94,12 @@ COPY docker/fpm/*.conf  /usr/local/etc/php-fpm.d/
 # --------------------------------------------------- Scripts ----------------------------------------------------------
 
 COPY docker/entrypoint/*-base docker/post-build/*-base docker/pre-run/*-base \
-     docker/fpm/healthcheck-fpm \
-     docker/command-loop        \
+     docker/fpm/healthcheck-fpm		\
+     docker/scripts/command-loop*	\
      # to
      /usr/local/bin/
 
-RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-fpm /usr/local/bin/command-loop
+RUN  chmod +x /usr/local/bin/*-base /usr/local/bin/healthcheck-fpm /usr/local/bin/command-loop*
 
 # ---------------------------------------------------- Composer --------------------------------------------------------
 
@@ -273,6 +268,13 @@ ENTRYPOINT ["nginx-entrypoint"]
 # ======================================================================================================================
 
 FROM nginx AS web
+
+USER root
+
+RUN SECURITY_UPGRADES="curl"; \
+    apk add --no-cache --upgrade ${SECURITY_UPGRADES}
+
+USER www-data
 
 # Copy Public folder + Assets that's going to be served from Nginx
 COPY --chown=www-data:www-data --from=app /app/public /app/public
