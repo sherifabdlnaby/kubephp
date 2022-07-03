@@ -1,6 +1,6 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
 ARG PHP_VERSION="8.1"
-ARG PHP_ALPINE_VERSION="3.15"
+ARG PHP_ALPINE_VERSION="3.16"
 ARG NGINX_VERSION="1.21"
 ARG COMPOSER_VERSION="2"
 ARG XDEBUG_VERSION="3.1.3"
@@ -30,9 +30,9 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 
-RUN IMAGE_DEPS="tini gettext"; \
-    RUNTIME_DEPS="fcgi"; \
-    apk add --no-cache ${IMAGE_DEPS} ${RUNTIME_DEPS}
+RUN RUNTIME_DEPS="tini fcgi"; \
+    SECURITY_UPGRADES="curl"; \
+    apk add --no-cache --upgrade ${RUNTIME_DEPS} ${SECURITY_UPGRADES}
 
 # ---------------------------------------- Install / Enable PHP Extensions ---------------------------------------------
 
@@ -268,6 +268,13 @@ ENTRYPOINT ["nginx-entrypoint"]
 # ======================================================================================================================
 
 FROM nginx AS web
+
+USER root
+
+RUN SECURITY_UPGRADES="curl"; \
+    apk add --no-cache --upgrade ${SECURITY_UPGRADES}
+
+USER www-data
 
 # Copy Public folder + Assets that's going to be served from Nginx
 COPY --chown=www-data:www-data --from=app /app/public /app/public
