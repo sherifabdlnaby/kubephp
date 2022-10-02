@@ -162,6 +162,9 @@ FROM base AS app
 ARG APP_BASE_DIR
 USER root
 
+# Copy PHP Production Configuration
+COPY docker/php/prod-*   $PHP_INI_DIR/conf.d/
+
 # Copy Prod Scripts && delete xdebug
 COPY docker/entrypoint/*-prod docker/post-build/*-prod docker/pre-run/*-prod \
      # to
