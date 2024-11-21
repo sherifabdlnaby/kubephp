@@ -35,8 +35,8 @@ jobs:
         with:
           dev: no
           command: create-project
-          args: --no-install --no-scripts symfony/symfony-demo:v2.1.0 app
-          php_version: 8.1
+          args: --no-install --no-scripts symfony/symfony-demo:v2.4 app
+          php_version: 8.3
       - name: Build & Deploy
         run: make deploy
       - name: Test the App Startup

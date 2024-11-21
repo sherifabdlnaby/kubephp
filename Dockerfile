@@ -1,15 +1,15 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
-ARG PHP_VERSION="8.1"
-ARG PHP_ALPINE_VERSION="3.16"
+ARG PHP_VERSION="8.3"
+ARG PHP_ALPINE_VERSION="3.20"
 ARG NGINX_VERSION="1.21"
-ARG COMPOSER_VERSION="2"
-ARG XDEBUG_VERSION="3.1.3"
+ARG COMPOSER_VERSION="2.2"
+ARG XDEBUG_VERSION="3.3.1"
 ARG COMPOSER_AUTH
 ARG APP_BASE_DIR="."
 
 # -------------------------------------------------- Composer Image ----------------------------------------------------
 
-FROM composer:${COMPOSER_VERSION} as composer
+FROM composer:${COMPOSER_VERSION} AS composer
 
 # ======================================================================================================================
 #                                                   --- Base ---
@@ -30,7 +30,7 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 
-RUN RUNTIME_DEPS="tini fcgi"; \
+RUN RUNTIME_DEPS="tini fcgi linux-headers"; \
     SECURITY_UPGRADES="curl"; \
     apk add --no-cache --upgrade ${RUNTIME_DEPS} ${SECURITY_UPGRADES}
 
@@ -131,7 +131,7 @@ CMD ["php-fpm"]
 # ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
 # ======================================================================================================================
 
-FROM composer as vendor
+FROM composer AS vendor
 
 ARG PHP_VERSION
 ARG COMPOSER_AUTH
@@ -196,7 +196,7 @@ CMD ["php-fpm"]
 #                                                   --- DEV ---
 # ======================================================================================================================
 
-FROM base as app-dev
+FROM base AS app-dev
 
 
 ENV APP_ENV dev
