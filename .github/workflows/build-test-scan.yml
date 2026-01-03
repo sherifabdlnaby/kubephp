@@ -92,13 +92,16 @@ jobs:
           tags: kubephp-${{ matrix.target }}:test
           build-args: |
             APP_BASE_DIR=${{ env.APP_BASE_DIR }}
+            BUILDPLATFORM=${{ matrix.platform }}
+            TARGETPLATFORM=${{ matrix.platform }}
           cache-from: type=gha,scope=${{ matrix.platform }}-${{ matrix.target }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}-${{ matrix.target }}
 
       - name: Test the App Startup
         if: matrix.target == 'app'
         run: |
-          docker run -d --name test-app kubephp-app:test
+          # Run container with explicit platform to ensure native execution
+          docker run -d --name test-app --platform ${{ matrix.platform }} kubephp-app:test
           sleep 5
           docker exec test-app php -v
           docker exec test-app php -m
@@ -215,6 +218,8 @@ jobs:
           tags: kubephp-app:scan
           build-args: |
             APP_BASE_DIR=${{ env.APP_BASE_DIR }}
+            BUILDPLATFORM=${{ matrix.platform }}
+            TARGETPLATFORM=${{ matrix.platform }}
           cache-from: type=gha,scope=scan-${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=scan-${{ matrix.platform }}
 
