@@ -55,6 +55,7 @@
 - Image tries to fail at build time as much as possible by running all sort of checks.
 - Ability to run Commands, Consumers and Crons using same image. (No supervisor or crontab)
 - Development Image **supports mounting code and hot-reloading and [XDebug out of the box](#debugging-with-xdebug)**.
+- Cache-friendly mechanism to update OS packages and auto-patch security vulnerabilities ([see cache mechanism](#cache-friendly-os-package-updates-and-auto-patching)).
 
 ## How to use with my project ?
 
@@ -131,6 +132,7 @@ However, in an environment where CI/CD pipelines will build the image, they will
     | `COMPOSER_VERSION`   | Composer Version used in Image | `2` |
     | `COMPOSER_AUTH`      | A Json Object with Bitbucket or Github token to clone private Repos with composer.</br>[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}` |
     | `XDEBUG_VERSION`     | Xdebug Version to use in Development Image | `3.5.0` |
+    | `OS_PACKAGE_UPGRADE_TRIGGER` | Cache buster for OS packages. Changing this value triggers a fresh installation and update of all OS packages. See [OS Package Cache Busting](#os-package-cache-busting) for details. | `1` |
 
     #### Image Targets
 
@@ -159,6 +161,12 @@ However, in an environment where CI/CD pipelines will build the image, they will
     ```
 ##### Note
 > At build time, Image will run `composer check-platform-reqs` to check that PHP and extensions versions match the platform requirements of the installed packages.
+
+### OS Package Cache Busting
+
+The `OS_PACKAGE_UPGRADE_TRIGGER` build argument allows you to force a fresh installation and update of all OS packages by changing its value. This is helpful to force a fresh installation (and patch security vulnerabilities) every time you build the image. A common use case is to set it based on date (e.g week of year, month, year, etc.) that will determine how often you want to update the OS packages.
+
+Note: It's a common recommendation to pin package versions. However in practice this is always a cause of hassle because you'll have to manually commit a change for every little dependency update. You can rely on Alpine Linux to maintain backward compatibility as they patch updates. The template rely on trust in Alpine plus all the pre-flight checks to make sure updates are safe to install. 
 
 ### PHP Configuration
 1. PHP `base` Configuration that are common in all environments in `docker/php/base-php.ini`[🔗](https://github.com/sherifabdlnaby/kubephp/blob/master/docker/php/base-php.ini)

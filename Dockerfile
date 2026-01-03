@@ -6,6 +6,7 @@ ARG COMPOSER_VERSION="2"
 ARG XDEBUG_VERSION="3.5.0"
 ARG COMPOSER_AUTH
 ARG APP_BASE_DIR="."
+ARG OS_PACKAGE_UPGRADE_TRIGGER="1"
 
 # Target platform for multi-arch builds (set by buildx)
 ARG TARGETPLATFORM
@@ -24,6 +25,7 @@ FROM php:${PHP_VERSION}-fpm-alpine${PHP_ALPINE_VERSION} AS base
 
 # Required Args ( inherited from start of file, or passed at build )
 ARG XDEBUG_VERSION
+ARG OS_PACKAGE_UPGRADE_TRIGGER
 
 # Maintainer label
 LABEL maintainer="sherifabdlnaby@gmail.com"
@@ -33,9 +35,11 @@ LABEL maintainer="sherifabdlnaby@gmail.com"
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
-
-RUN RUNTIME_DEPS="tini fcgi"; \
+# OS_PACKAGE_UPGRADE_TRIGGER is used to bust cache and trigger fresh package installation when changed
+RUN OS_PACKAGE_UPGRADE_TRIGGER=${OS_PACKAGE_UPGRADE_TRIGGER} && \
+    RUNTIME_DEPS="tini fcgi"; \
     SECURITY_UPGRADES="curl"; \
+    apk update && \
     apk add --no-cache --upgrade ${RUNTIME_DEPS} ${SECURITY_UPGRADES}
 
 # ---------------------------------------- Install / Enable PHP Extensions ---------------------------------------------
@@ -257,6 +261,13 @@ CMD ["php-fpm"]
 # ======================================================================================================================
 FROM nginx:${NGINX_VERSION}-alpine AS nginx
 
+# Required Args ( inherited from start of file, or passed at build )
+ARG OS_PACKAGE_UPGRADE_TRIGGER
+
+# OS_PACKAGE_UPGRADE_TRIGGER is used to bust cache and trigger fresh package installation when changed
+RUN OS_PACKAGE_UPGRADE_TRIGGER=${OS_PACKAGE_UPGRADE_TRIGGER} && \
+    apk update
+
 RUN rm -rf /var/www/* /etc/nginx/conf.d/* && adduser -u 1000 -D -S -G www-data www-data
 COPY docker/nginx/nginx-*   /usr/local/bin/
 COPY docker/nginx/          /etc/nginx/
@@ -285,11 +296,6 @@ ENTRYPOINT ["nginx-entrypoint"]
 # ======================================================================================================================
 
 FROM nginx AS web
-
-USER root
-
-RUN SECURITY_UPGRADES="curl"; \
-    apk add --no-cache --upgrade ${SECURITY_UPGRADES}
 
 USER www-data
 

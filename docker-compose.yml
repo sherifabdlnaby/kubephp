@@ -11,6 +11,7 @@ services:
         # Please add Composer Auth JSON Object
         COMPOSER_AUTH: "{}"
         APP_BASE_DIR: ${APP_BASE_DIR-.}
+        OS_PACKAGE_UPGRADE_TRIGGER: ${OS_PACKAGE_UPGRADE_TRIGGER-1}
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
