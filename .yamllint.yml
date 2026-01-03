@@ -1,0 +1,60 @@
+---
+# YAML Lint configuration for GitHub Actions workflows and Docker Compose files
+extends: default
+
+rules:
+  # Line length - allow longer lines for readability
+  line-length:
+    max: 200
+    level: warning
+  
+  # Allow comments at end of lines
+  comments:
+    min-spaces-from-content: 1
+  
+  # Allow empty values
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+  
+  # Indentation - 2 spaces for YAML
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+  
+  # Allow document start
+  document-start: disable
+  
+  # Allow trailing spaces (sometimes needed in YAML)
+  trailing-spaces: disable
+  
+  # Allow new line at end of file
+  new-line-at-end-of-file: disable
+  
+  # Allow truthy values (yes, no, on, off, etc.)
+  truthy:
+    allowed-values: ['true', 'false', 'on', 'off', 'yes', 'no']
+    check-keys: false
+  
+  # Allow brackets in flow sequences
+  brackets:
+    max-spaces-inside: 1
+    max-spaces-inside-empty: 0
+  
+  # Allow colons in values (common in GitHub Actions)
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: 1
+  
+  # Allow commas in flow mappings
+  commas:
+    max-spaces-before: 0
+    min-spaces-after: 1
+    max-spaces-after: 1
+  
+  # Comments indentation
+  comments-indentation: disable
+  
+  # Key ordering - disable (not critical for workflows)
+  key-ordering: disable

@@ -3,8 +3,8 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-# A sample workflow which checks out the code, builds a container
-# image using Docker and scans that image for vulnerabilities using
+# A sample workflow which checks out the code, builds multi-architecture container
+# images using Docker Buildx and scans that image for vulnerabilities using
 # Snyk. The results are then uploaded to GitHub Security Code Scanning
 #
 # For more examples, including how to limit scans to only high-severity
@@ -22,36 +22,222 @@ on:
   schedule:
     - cron: '41 5 * * 5'
 
+# Prevent multiple concurrent runs for the same workflow
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   APP_BASE_DIR: "./app"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  Build-Test-Scan:
-    runs-on: ubuntu-latest
+  # Build multi-architecture images natively
+  build:
+    name: Build (${{ matrix.platform }} - ${{ matrix.target }})
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            target: app
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            target: web
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            target: app
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            target: web
+    runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Install Demo App
-        uses: php-actions/composer@v6
+        run: |
+          # Pull composer image for the correct platform
+          docker pull --platform ${{ matrix.platform }} composer:2
+          # Run composer create-project
+          docker run --rm --platform ${{ matrix.platform }} \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            composer:2 create-project \
+            --no-install --no-scripts \
+            symfony/symfony-demo app
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          dev: no
-          command: create-project
-          args: --no-install --no-scripts symfony/symfony-demo:v2.1.0 app
-          php_version: 8.1
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.target }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
+          push: false
+          load: true
+          tags: kubephp-${{ matrix.target }}:test
+          build-args: |
+            APP_BASE_DIR=${{ env.APP_BASE_DIR }}
+            BUILDPLATFORM=${{ matrix.platform }}
+            TARGETPLATFORM=${{ matrix.platform }}
+          cache-from: type=gha,scope=${{ matrix.platform }}-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}-${{ matrix.target }}
+
+      - name: Test the App Startup
+        if: matrix.target == 'app'
+        run: |
+          # Run container with explicit platform to ensure native execution
+          docker run -d --name test-app --platform ${{ matrix.platform }} kubephp-app:test
+          sleep 5
+          docker exec test-app php -v
+          docker exec test-app php -m
+          docker stop test-app
+          docker rm test-app
+
+  # Test the full stack on both AMD64 and ARM64 natively
+  integration-test:
+    name: Integration Test (${{ matrix.platform }})
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Demo App
+        run: |
+          # Pull composer image for the correct platform
+          docker pull --platform ${{ matrix.platform }} composer:2
+          # Run composer create-project
+          docker run --rm --platform ${{ matrix.platform }} \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            composer:2 create-project \
+            --no-install --no-scripts \
+            symfony/symfony-demo app
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build & Deploy
         run: make deploy
+
+      - name: Wait for services to be ready
+        run: |
+          timeout=60
+          elapsed=0
+          while ! curl -f http://localhost:8080 >/dev/null 2>&1; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "Service failed to start within $timeout seconds"
+              docker compose -f docker-compose.prod.yml logs
+              exit 1
+            fi
+            echo "Waiting for service... ($elapsed/$timeout seconds)"
+            sleep 2
+            elapsed=$((elapsed + 2))
+          done
+          echo "Service is ready!"
+
       - name: Test the App Startup
-        run: sleep 5 && curl localhost:8080 -I
-      - name: Run Snyk to check Docker image for vulnerabilities
-        # Snyk can be used to break the build when it detects vulnerabilities.
-        # In this case we want to upload the issues to GitHub Code Scanning
-        continue-on-error: true
-        uses: snyk/actions/docker@14818c4695ecc4045f33c9cee9e795a788711ca4
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          curl -f http://localhost:8080 -I
+          curl -f http://localhost:8080 -s | head -50
+
+  # Security scanning on both architectures
+  security-scan:
+    name: Security Scan (${{ matrix.platform }})
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    needs: build
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Demo App
+        run: |
+          # Pull composer image for the correct platform
+          docker pull --platform ${{ matrix.platform }} composer:2
+          # Run composer create-project
+          docker run --rm --platform ${{ matrix.platform }} \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            composer:2 create-project \
+            --no-install --no-scripts \
+            symfony/symfony-demo app
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build app image for scanning
+        uses: docker/build-push-action@v6
         with:
-          image: kubephp_app:latest kubephp_web:latest
-          args: --file=Dockerfile --print-deps
-      - name: Upload result to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v1
+          context: .
+          platforms: ${{ matrix.platform }}
+          target: app
+          push: false
+          load: true
+          tags: kubephp-app:scan
+          build-args: |
+            APP_BASE_DIR=${{ env.APP_BASE_DIR }}
+            BUILDPLATFORM=${{ matrix.platform }}
+            TARGETPLATFORM=${{ matrix.platform }}
+          cache-from: type=gha,scope=scan-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=scan-${{ matrix.platform }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
         with:
-          sarif_file: snyk.sarif
+          image-ref: kubephp-app:scan
+          format: sarif
+          output: trivy-results.sarif
+          severity: 'CRITICAL,HIGH'
+          scanners: 'vuln,config,secret'
+          exit-code: '0'
+          # The template doesn't install PHP. The packages in this test are from the demo symfony app that is not part of this repo.
+          trivy-args: >-
+            --skip-dirs /app/vendor
+            --skip-packages composer
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          wait-for-processing: true

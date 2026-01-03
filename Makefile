@@ -1,64 +1,124 @@
 .DEFAULT_GOAL:=help
 
-COMPOSE_PREFIX_CMD := DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1
-
 COMMAND ?= /bin/sh
 
 # --------------------------
 
 .PHONY: deploy up build-up build down start stop logs images ps command \
-	command-root shell-root shell restart rm help
+	command-root shell-root shell restart rm help \
+	demo/symfony/setup demo/symfony/up demo/symfony/deploy demo/symfony/clean \
+	demo/laravel/setup demo/laravel/up demo/laravel/deploy demo/laravel/clean
 
 deploy:			## Start using Prod Image in Prod Mode
-	${COMPOSE_PREFIX_CMD} docker-compose -f docker-compose.prod.yml up --build -d
+	docker compose -f docker-compose.prod.yml up --build -d
 
 up:				## Start service
 	@echo "Starting Application \n (note: Web container will wait App container to start before starting)"
-	${COMPOSE_PREFIX_CMD} docker-compose up -d
+	docker compose up -d
 
 build-up:       ## Start service, rebuild if necessary
-	${COMPOSE_PREFIX_CMD} docker-compose up --build -d
+	docker compose up --build -d
 
 build:			## Build The Image
-	${COMPOSE_PREFIX_CMD} docker-compose build
+	docker compose build
 
 down:			## Down service and do clean up
-	${COMPOSE_PREFIX_CMD} docker-compose down
+	docker compose down
 
 start:			## Start Container
-	${COMPOSE_PREFIX_CMD} docker-compose start
+	docker compose start
 
 stop:			## Stop Container
-	${COMPOSE_PREFIX_CMD} docker-compose stop
+	docker compose stop
 
 logs:			## Tail container logs with -n 1000
-	@${COMPOSE_PREFIX_CMD} docker-compose logs --follow --tail=100
+	@docker compose logs --follow --tail=100
 
 images:			## Show Image created by this Makefile (or Docker-compose in docker)
-	@${COMPOSE_PREFIX_CMD} docker-compose images
+	@docker compose images
 
 ps:			## Show Containers Running
-	@${COMPOSE_PREFIX_CMD} docker-compose ps
+	@docker compose ps
 
 command:	  ## Execute command ( make command COMMAND=<command> )
-	@${COMPOSE_PREFIX_CMD} docker-compose run --rm app ${COMMAND}
+	@docker compose run --rm app ${COMMAND}
 
 command-root:	 ## Execute command as root ( make command-root COMMAND=<command> )
-	@${COMPOSE_PREFIX_CMD} docker-compose run --rm -u root app ${COMMAND}
+	@docker compose run --rm -u root app ${COMMAND}
 
 shell-root:			## Enter container shell as root
-	@${COMPOSE_PREFIX_CMD} docker-compose exec -u root app /bin/sh
+	@docker compose exec -u root app /bin/sh
 
 shell:			## Enter container shell
-	@${COMPOSE_PREFIX_CMD} docker-compose exec app /bin/sh
+	@docker compose exec app /bin/sh
 
 restart:		## Restart container
-	@${COMPOSE_PREFIX_CMD} docker-compose restart
+	@docker compose restart
 
 rm:				## Remove current container
-	@${COMPOSE_PREFIX_CMD} docker-compose rm -f
+	@docker compose rm -f
 
-help:       	## Show this help.
-	@echo "\n\nMake Application Docker Images and Containers using Docker-Compose files"
-	@echo "Make sure you are using \033[0;32mDocker Version >= 20.1\033[0m & \033[0;32mDocker-Compose >= 1.27\033[0m "
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m ENV=<prod|dev> (default: dev)\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+# Symfony demo app setup
+demo/symfony/setup:		## Download the latest Symfony Demo app for testing
+	@if [ -d "app" ]; then \
+		echo "Warning: 'app' directory already exists. Remove it first if you want a fresh install."; \
+		exit 1; \
+	fi
+	@echo "Downloading latest Symfony Demo application..."
+	docker run --rm -v $(PWD):/app -w /app composer:2 \
+		create-project symfony/symfony-demo app --no-install --no-scripts
+	@echo "Installing composer dependencies..."
+	docker run --rm -v $(PWD)/app:/app -w /app composer:2 \
+		install --ignore-platform-reqs --no-scripts
+	@echo "Demo app downloaded to ./app/"
+	@echo "Run 'make demo/symfony/up' to start the development environment"
+
+demo/symfony/up:		## Start the Symfony demo app in dev mode (APP_BASE_DIR=app)
+	APP_BASE_DIR=./app make build-up
+	@echo "Visit http://localhost:8080 to see the Symfony demo app"
+
+demo/symfony/deploy:		## Start the Symfony demo app in prod mode (APP_BASE_DIR=app)
+	APP_BASE_DIR=./app make deploy
+
+demo/symfony/clean:		## Remove the Symfony demo app directory
+	rm -rf app
+	@echo "Symfony demo app removed"
+
+# Laravel demo app setup
+demo/laravel/setup:		## Download the latest Laravel application for testing
+	@if [ -d "app" ]; then \
+		echo "Warning: 'app' directory already exists. Remove it first if you want a fresh install."; \
+		exit 1; \
+	fi
+	@echo "Downloading latest Laravel application..."
+	docker run --rm -v $(PWD):/app -w /app composer:2 \
+		create-project laravel/laravel app --no-install --no-scripts
+	@echo "Installing composer dependencies..."
+	docker run --rm -v $(PWD)/app:/app -w /app composer:2 \
+		install --ignore-platform-reqs --no-scripts
+	@echo "Setting up Laravel environment..."
+	@if [ ! -f "app/.env" ] && [ -f "app/.env.example" ]; then \
+		cp app/.env.example app/.env; \
+	fi
+	@echo "Generating Laravel application key..."
+	docker run --rm -v $(PWD)/app:/app -w /app composer:2 \
+		sh -c "composer dump-autoload --no-interaction && php artisan key:generate --force --no-interaction || true"
+	@echo "Creating SQLite database..."
+	@mkdir -p app/database
+	@touch app/database/database.sqlite
+	@echo "Running database migrations..."
+	docker run --rm -v $(PWD)/app:/app -w /app composer:2 \
+		sh -c "php artisan migrate --force --no-interaction || true"
+	@echo "Laravel demo app downloaded to ./app/"
+	@echo "Run 'make demo/laravel/up' to start the development environment"
+
+demo/laravel/up:		## Start the Laravel demo app in dev mode (APP_BASE_DIR=app)
+	APP_BASE_DIR=./app make build-up
+	@echo "Visit http://localhost:8080 to see the Laravel base app"
+
+demo/laravel/deploy:		## Start the Laravel demo app in prod mode (APP_BASE_DIR=app)
+	APP_BASE_DIR=./app make deploy
+
+demo/laravel/clean:		## Remove the Laravel demo app directory
+	rm -rf app
+	@echo "Laravel demo app removed"
