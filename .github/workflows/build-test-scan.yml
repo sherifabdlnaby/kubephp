@@ -221,17 +221,19 @@ jobs:
           cache-from: type=gha,scope=scan-${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=scan-${{ matrix.platform }}
 
-      - name: Run Snyk to check Docker image for vulnerabilities
-        continue-on-error: true
-        uses: snyk/actions/docker@0.8.0
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
         with:
-          image: kubephp-app:scan
-          args: --file=Dockerfile --print-deps --severity-threshold=high
+          image-ref: kubephp-app:scan
+          format: sarif
+          output: trivy-results.sarif
+          severity: 'CRITICAL,HIGH'
+          scanners: 'vuln,config,secret'
+          exit-code: '0'
 
-      - name: Upload result to GitHub Code Scanning
+      - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: snyk.sarif
+          sarif_file: trivy-results.sarif
+          wait-for-processing: true
