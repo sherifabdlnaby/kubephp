@@ -108,13 +108,6 @@ jobs:
           docker stop test-app
           docker rm test-app
 
-      - name: Cleanup
-        if: always()
-        run: |
-          docker stop test-app
-          docker rm test-app
-          docker system prune -f
-
   # Test the full stack on both AMD64 and ARM64 natively
   integration-test:
     name: Integration Test (${{ matrix.platform }})
@@ -231,9 +224,3 @@ jobs:
         if: always()
         with:
           sarif_file: snyk.sarif
-
-      - name: Cleanup
-        if: always()
-        run: |
-          docker rmi kubephp-app:scan || true
-          docker system prune -f || true
