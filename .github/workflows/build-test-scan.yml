@@ -168,12 +168,6 @@ jobs:
           curl -f http://localhost:8080 -I
           curl -f http://localhost:8080 -s | head -50
 
-      - name: Cleanup
-        if: always()
-        run: |
-          docker compose -f docker-compose.prod.yml down -v || true
-          docker system prune -f || true
-
   # Security scanning on both architectures
   security-scan:
     name: Security Scan (${{ matrix.platform }})
