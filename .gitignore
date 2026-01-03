@@ -1,3 +1,9 @@
+# Application directory (dynamically created or user's app)
+/app/
+
+# IDE
+/.idea/
+/.vscode/
 
 ###> symfony/framework-bundle ###
 /.env.local
@@ -14,3 +20,10 @@
 .phpunit.result.cache
 /phpunit.xml
 ###< symfony/phpunit-bridge ###
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db

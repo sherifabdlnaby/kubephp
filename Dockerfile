@@ -1,15 +1,19 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
-ARG PHP_VERSION="8.1"
-ARG PHP_ALPINE_VERSION="3.16"
-ARG NGINX_VERSION="1.21"
+ARG PHP_VERSION="8.4"
+ARG PHP_ALPINE_VERSION="3.21"
+ARG NGINX_VERSION="1.28"
 ARG COMPOSER_VERSION="2"
-ARG XDEBUG_VERSION="3.1.3"
+ARG XDEBUG_VERSION="3.5.0"
 ARG COMPOSER_AUTH
 ARG APP_BASE_DIR="."
 
+# Target platform for multi-arch builds (set by buildx)
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
 # -------------------------------------------------- Composer Image ----------------------------------------------------
 
-FROM composer:${COMPOSER_VERSION} as composer
+FROM composer:${COMPOSER_VERSION} AS composer
 
 # ======================================================================================================================
 #                                                   --- Base ---
@@ -36,22 +40,31 @@ RUN RUNTIME_DEPS="tini fcgi"; \
 
 # ---------------------------------------- Install / Enable PHP Extensions ---------------------------------------------
 
-
 RUN apk add --no-cache --virtual .build-deps \
       $PHPIZE_DEPS  \
-      libzip-dev    \
       icu-dev       \
+      libzip-dev    \
+      linux-headers \
  # PHP Extensions --------------------------------- \
  && docker-php-ext-install -j$(nproc) \
-      intl        \
-      opcache     \
-      pdo_mysql   \
-      zip         \
+      intl          \
+      opcache       \
+      pdo_mysql     \
+      zip           \
  # Pecl Extensions -------------------------------- \
- && pecl install apcu && docker-php-ext-enable apcu \
- # ---------------------------------------------------------------------
+ && pecl install apcu \
+ && docker-php-ext-enable apcu \
  # Install Xdebug at this step to make editing dev image cache-friendly, we delete xdebug from production image later
  && pecl install xdebug-${XDEBUG_VERSION} \
+ # Verify PECL extensions are installed ---------- \
+ # pecl install can fail silently (e.g., network issues, missing deps, compilation errors) \
+ # yet still return exit code 0. We verify the .so files exist to catch these failures. \
+ && { \
+      EXT_DIR=$(php -r 'echo ini_get("extension_dir");'); \
+      for ext in apcu xdebug; do \
+        test -f "$EXT_DIR/${ext}.so" || { echo "ERROR: ${ext}.so not found in $EXT_DIR"; exit 1; }; \
+      done; \
+    } \
  # Cleanup ---------------------------------------- \
  && rm -r /tmp/pear; \
  # - Detect Runtime Dependencies of the installed extensions. \
@@ -111,8 +124,8 @@ WORKDIR /app
 USER www-data
 
 # Common PHP Frameworks Env Variables
-ENV APP_ENV prod
-ENV APP_DEBUG 0
+ENV APP_ENV=prod
+ENV APP_DEBUG=0
 
 # Validate FPM config (must use the non-root user)
 RUN php-fpm -t
@@ -131,7 +144,7 @@ CMD ["php-fpm"]
 # ---------------  This stage will install composer runtime dependinces and install app dependinces.  ------------------
 # ======================================================================================================================
 
-FROM composer as vendor
+FROM composer AS vendor
 
 ARG PHP_VERSION
 ARG COMPOSER_AUTH
@@ -139,7 +152,8 @@ ARG APP_BASE_DIR
 
 # A Json Object with remote repository token to clone private Repos with composer
 # Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
-ENV COMPOSER_AUTH $COMPOSER_AUTH
+# Note: For production, consider using Docker BuildKit secrets instead
+ENV COMPOSER_AUTH=${COMPOSER_AUTH}
 
 WORKDIR /app
 
@@ -196,11 +210,11 @@ CMD ["php-fpm"]
 #                                                   --- DEV ---
 # ======================================================================================================================
 
-FROM base as app-dev
+FROM base AS app-dev
 
 
-ENV APP_ENV dev
-ENV APP_DEBUG 1
+ENV APP_ENV=dev
+ENV APP_DEBUG=1
 
 # Switch root to install stuff
 USER root
@@ -250,9 +264,9 @@ RUN chown -R www-data /etc/nginx/ && chmod +x /usr/local/bin/nginx-*
 
 # The PHP-FPM Host
 ## Localhost is the sensible default assuming image run on a k8S Pod
-ENV PHP_FPM_HOST "localhost"
-ENV PHP_FPM_PORT "9000"
-ENV NGINX_LOG_FORMAT "json"
+ENV PHP_FPM_HOST="localhost"
+ENV PHP_FPM_PORT="9000"
+ENV NGINX_LOG_FORMAT="json"
 
 # For Documentation
 EXPOSE 8080
@@ -287,7 +301,7 @@ COPY --chown=www-data:www-data --from=app /app/public /app/public
 # ======================================================================================================================
 FROM nginx AS web-dev
 
-ENV NGINX_LOG_FORMAT "combined"
+ENV NGINX_LOG_FORMAT="combined"
 
 COPY --chown=www-data:www-data docker/nginx/dev/*.conf   /etc/nginx/conf.d/
 COPY --chown=www-data:www-data docker/nginx/dev/certs/   /etc/nginx/certs/

@@ -1,3 +1,10 @@
 #!/bin/sh
 set -eu
 # Put Custom Ad-hoc scripts after build. Like framework specific checks, etc.
+
+# Symfony Asset Mapper
+# https://symfony.com/doc/current/frontend/asset_mapper.html
+if [ -f "bin/console" ] && grep -q "asset-mapper" composer.json 2>/dev/null; then
+    php bin/console importmap:install --no-interaction || true
+    php bin/console asset-map:compile --no-interaction || true
+fi

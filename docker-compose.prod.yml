@@ -1,4 +1,5 @@
-version: '3.7'
+# Production Docker Compose Configuration
+# Uses immutable images with code baked in
 
 services:
   app:

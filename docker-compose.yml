@@ -1,4 +1,5 @@
-version: '3.7'
+# Development Docker Compose Configuration
+# Supports hot-reloading with mounted volumes
 
 services:
   app:
