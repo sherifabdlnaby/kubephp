@@ -22,24 +22,38 @@ on:
   schedule:
     - cron: '41 5 * * 5'
 
+# Prevent multiple concurrent runs for the same workflow
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   APP_BASE_DIR: "./app"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Build multi-architecture images
+  # Build multi-architecture images natively
   build:
-    runs-on: ubuntu-latest
+    name: Build (${{ matrix.platform }} - ${{ matrix.target }})
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
-        target:
-          - app
-          - web
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            target: app
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            target: web
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            target: app
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            target: web
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,8 +66,6 @@ jobs:
           args: --no-install --no-scripts symfony/symfony-demo app
           php_version: "8.4"
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -80,21 +92,39 @@ jobs:
           tags: kubephp-${{ matrix.target }}:test
           build-args: |
             APP_BASE_DIR=${{ env.APP_BASE_DIR }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.platform }}-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}-${{ matrix.target }}
 
-      - name: Test the App Startup (AMD64 only)
-        if: matrix.platform == 'linux/amd64' && matrix.target == 'app'
+      - name: Test the App Startup
+        if: matrix.target == 'app'
         run: |
           docker run -d --name test-app kubephp-app:test
           sleep 5
           docker exec test-app php -v
           docker exec test-app php -m
           docker stop test-app
+          docker rm test-app
 
-  # Test the full stack on AMD64
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop test-app
+          docker rm test-app
+          docker system prune -f
+
+  # Test the full stack on both AMD64 and ARM64 natively
   integration-test:
-    runs-on: ubuntu-latest
+    name: Integration Test (${{ matrix.platform }})
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     needs: build
     steps:
       - name: Checkout
@@ -108,19 +138,57 @@ jobs:
           args: --no-install --no-scripts symfony/symfony-demo app
           php_version: "8.4"
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build & Deploy
         run: make deploy
 
+      - name: Wait for services to be ready
+        run: |
+          timeout=60
+          elapsed=0
+          while ! curl -f http://localhost:8080 >/dev/null 2>&1; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "Service failed to start within $timeout seconds"
+              docker compose -f docker-compose.prod.yml logs
+              exit 1
+            fi
+            echo "Waiting for service... ($elapsed/$timeout seconds)"
+            sleep 2
+            elapsed=$((elapsed + 2))
+          done
+          echo "Service is ready!"
+
       - name: Test the App Startup
         run: |
-          sleep 10
-          curl localhost:8080 -I
-          curl localhost:8080 -s | head -50
+          curl -f http://localhost:8080 -I
+          curl -f http://localhost:8080 -s | head -50
 
-  # Security scanning
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose -f docker-compose.prod.yml down -v || true
+          docker system prune -f || true
+
+  # Security scanning on both architectures
   security-scan:
-    runs-on: ubuntu-latest
+    name: Security Scan (${{ matrix.platform }})
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     needs: build
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -140,24 +208,33 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: ${{ matrix.platform }}
           target: app
           push: false
           load: true
           tags: kubephp-app:scan
           build-args: |
             APP_BASE_DIR=${{ env.APP_BASE_DIR }}
+          cache-from: type=gha,scope=scan-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=scan-${{ matrix.platform }}
 
       - name: Run Snyk to check Docker image for vulnerabilities
         continue-on-error: true
-        uses: snyk/actions/docker@master
+        uses: snyk/actions/docker@0.8.0
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           image: kubephp-app:scan
-          args: --file=Dockerfile --print-deps
+          args: --file=Dockerfile --print-deps --severity-threshold=high
 
       - name: Upload result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: snyk.sarif
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rmi kubephp-app:scan || true
+          docker system prune -f || true
