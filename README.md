@@ -8,8 +8,11 @@
 	<a>
 		<img src="https://img.shields.io/github/v/tag/sherifabdlnaby/kubephp?label=release&amp;sort=semver">
     </a>
-	<a>
-		<img src="https://github.com/sherifabdlnaby/kubephp/actions/workflows/build-test-scan.yml/badge.svg" alt="Build">
+	<a href="https://github.com/sherifabdlnaby/kubephp/actions/workflows/build-test-scan.yml">
+		<img src="https://img.shields.io/github/actions/workflow/status/sherifabdlnaby/kubephp/build-test-scan.yml?label=Build&amp;branch=main" alt="Build Status">
+	</a>
+	<a href="https://github.com/sherifabdlnaby/kubephp/actions/workflows/build-test-scan.yml">
+		<img src="https://img.shields.io/github/actions/workflow/status/sherifabdlnaby/kubephp/build-test-scan.yml?label=Tests&amp;branch=main" alt="Test Status">
 	</a>
 	<a>
 		<img src="https://img.shields.io/badge/PHP-8.4-%23777BB4?logo=php" alt="PHP 8.4">
