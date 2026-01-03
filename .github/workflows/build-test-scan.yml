@@ -59,13 +59,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Demo App
-        uses: php-actions/composer@v6
-        with:
-          dev: no
-          command: create-project
-          args: --no-install --no-scripts symfony/symfony-demo app
-          php_version: "8.4"
-
+        run: |
+          # Pull composer image for the correct platform
+          docker pull --platform ${{ matrix.platform }} composer:2
+          # Run composer create-project
+          docker run --rm --platform ${{ matrix.platform }} \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            composer:2 create-project \
+            --no-install --no-scripts \
+            symfony/symfony-demo app
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -127,12 +130,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Demo App
-        uses: php-actions/composer@v6
-        with:
-          dev: no
-          command: create-project
-          args: --no-install --no-scripts symfony/symfony-demo app
-          php_version: "8.4"
+        run: |
+          # Pull composer image for the correct platform
+          docker pull --platform ${{ matrix.platform }} composer:2
+          # Run composer create-project
+          docker run --rm --platform ${{ matrix.platform }} \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            composer:2 create-project \
+            --no-install --no-scripts \
+            symfony/symfony-demo app
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -184,12 +191,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Demo App
-        uses: php-actions/composer@v6
-        with:
-          dev: no
-          command: create-project
-          args: --no-install --no-scripts symfony/symfony-demo app
-          php_version: "8.4"
+        run: |
+          # Pull composer image for the correct platform
+          docker pull --platform ${{ matrix.platform }} composer:2
+          # Run composer create-project
+          docker run --rm --platform ${{ matrix.platform }} \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            composer:2 create-project \
+            --no-install --no-scripts \
+            symfony/symfony-demo app
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
