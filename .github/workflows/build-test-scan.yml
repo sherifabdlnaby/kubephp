@@ -230,6 +230,10 @@ jobs:
           severity: 'CRITICAL,HIGH'
           scanners: 'vuln,config,secret'
           exit-code: '0'
+          # The template doesn't install PHP. The packages in this test are from the demo symfony app that is not part of this repo.
+          trivy-args: >-
+            --skip-dirs /app/vendor
+            --skip-packages composer
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
