@@ -34,29 +34,31 @@
 # Introduction
 **Production Grade Image for PHP 8.4+ Applications** running **Nginx + PHP FPM** based on [PHP](https://hub.docker.com/_/php) & [Nginx](https://hub.docker.com/_/nginx) **Official Images**, compatible with popular PHP Frameworks such as [Laravel](https://laravel.com/) & [Symfony](https://symfony.com/) and their variants.
 
-- This is a pre-configured template image for your PHP Application, **and you shall extend and edit it according to your app requirements.** (instructions below)
-- The Image utilizes multistage builds to create multiple targets optimized for **production** and **development** usecases.
-- Image designed to be run in Kubernetes.
-- **Multi-architecture support**: Builds for both `linux/amd64` (Intel/AMD) and `linux/arm64` (Apple Silicon, AWS Graviton)
-- Supports PHP applications that uses a single-entrypoint framework in `public/index.php`, such as Laravel, Symfony, and all their variants.
+- This is a pre-configured template image for your PHP Application, **and you shall extend and edit it according to your app requirements.** See [Requirements](#requirements) first, then follow [How to use with my project](#how-to-use-with-my-project-) and [How to configure image to run my project](#how-to-configure-image-to-run-my-project-) for setup instructions.
+- The Image utilizes [multistage builds](#building-configuring-and-extending-image) to create multiple targets optimized for **production** OR **development** use cases. Hyper-optimized for caching and build time. See [Image Targets and Build Arguments](#image-targets-and-build-arguments) for details.
+- [Demo applications](#running-the-demo-applications) are available for both frameworks to give you a quick start:
+    - use `make demo/symfony/setup` for **Symfony Demo** (latest Symfony 7.x)
+    - use `make demo/laravel/setup` for **Laravel** (latest Laravel 11.x).
 
 ## Features 📜
 
-- Designed to run in orchestrated environments like Kubernetes.
-- **Multi-architecture support** - native images for AMD64 and ARM64 (Apple Silicon M1/M2/M3, AWS Graviton)
+- Designed to run in orchestrated environments like Kubernetes. See [How is it deployed?](#how-is-it-deployed-) for architecture details.
+- **Multi-architecture support** - native images for AMD64 and ARM64.
 - Uses Alpine based images and multistage builds for minimal images. (~135 MB)
 - Multi-Container setup with `Nginx` & `PHP-FPM` communicating via TCP.
 - Productions Image that are **immutable** and **fully contained**.
 - **Runs as non-root** in both application containers.
 - Configured for graceful shutdowns/restarts, **zero downtime deployments, auto-healing, and auto-scaling**.
 - **PHP 8.4 optimizations** including JIT compilation and OPcache file caching.
-- Easily extend the image with extra configuration, and scripts; such as post-build & pre-run scripts.
+- Easily extend the image with extra configuration, and scripts; such as [post-build & pre-run scripts](#post-build-and-pre-run-optional-scripts).
 - Minimal startup time, container almost start serving requests almost instantly.
 - Image tries to fail at build time as much as possible by running all sort of checks.
 - Ability to run Commands, Consumers and Crons using same image. (No supervisor or crontab)
-- Development Image **supports mounting code and hot-reloading and XDebug**.
+- Development Image **supports mounting code and hot-reloading and [XDebug out of the box](#debugging-with-xdebug)**.
 
 ## How to use with my project ?
+
+This is a template, it's expected from you to tailor it to your needs. And then generate a build pipeline to build the image and push it to your registry.
 
 - Copy this repository `Dockerfile`, `docker` Directory, `Makefile`, `docker-compose.yml`, `docker-compose.prod.yml` and `.dockerignore` to your application root directory and configure it to your needs.
 
@@ -139,50 +141,6 @@ However, in an environment where CI/CD pipelines will build the image, they will
     | app-dev    | Development | Development PHP Application variant with dependencies inside. Image expects the code to be mounted on `/app` to support hot-reloading. You need to mount dummy `/app/vendor` volume too to avoid code volume to overwrite dependencies already inside the image. | ~150mb | PHP Official Image (Alpine)   |
     | web-dev    | Development | Development Webserver with the exact configuration as the production configuration. Expects public directory to be mounted at `/app/public`                                                                                                                              |    ~21mb     |   Nginx Official Image (Alpine)                            |
 
-### Multi-Architecture Builds
-
-KubePHP supports building images for multiple architectures:
-- `linux/amd64` - Intel/AMD processors (traditional servers, most cloud instances)
-- `linux/arm64` - ARM processors (Apple Silicon M1/M2/M3, AWS Graviton, Azure ARM)
-
-#### Building Multi-Arch Images
-
-```bash
-# Setup buildx (one-time)
-make buildx-setup
-
-# Build for all platforms (default: linux/amd64,linux/arm64)
-make build-multiarch
-
-# Build and push to registry
-make build-multiarch-push IMAGE_NAME=myregistry/myapp
-```
-
-#### Customizing Multi-Arch Builds
-
-You can customize the build platforms and image names using environment variables:
-
-```bash
-# Build for specific platforms only
-make build-multiarch PLATFORMS=linux/amd64
-
-# Build only ARM64 (e.g., for Apple Silicon development)
-make build-multiarch PLATFORMS=linux/arm64
-
-# Build with custom image name and specific platforms
-make build-multiarch IMAGE_NAME=mycompany/myapp PLATFORMS=linux/amd64,linux/arm64
-
-# Build and push to registry with custom settings
-make build-multiarch-push \
-  IMAGE_NAME=ghcr.io/myorg/myapp \
-  PLATFORMS=linux/amd64,linux/arm64,linux/arm/v7
-```
-
-**Available Variables:**
-- `PLATFORMS` - Comma-separated list of target platforms (default: `linux/amd64,linux/arm64`)
-- `IMAGE_NAME` - Docker image name/tag prefix (default: `kubephp`)
-- `APP_BASE_DIR` - Application directory path (default: `.` which expects `./app`)
-
 ### Install System Dependencies and PHP Extensions
 - The image is to be used as a base for your PHP application image, you should modify its Dockerfile to your needs.
 
@@ -212,6 +170,22 @@ make build-multiarch-push \
 
 ### Nginx Configuration
 1. Nginx Configuration  `docker/nginx/*.conf && docker/nginx/conf.d/* ` [🔗](https://github.com/sherifabdlnaby/kubephp/blob/master/docker/nginx)
+
+### Debugging with XDebug
+
+The development image includes XDebug 3.5.0 pre-configured and ready to use. This setup has been tested with **PHPStorm**.
+
+#### XDebug Configuration
+
+XDebug is automatically enabled in the `app-dev` target with the following settings:
+- **Port**: `9000` (DBGp protocol)
+- **IDE Key**: `kubephp`
+- **Mode**: `debug`
+- **Client Host**: `host.docker.internal` (automatically resolves to your Docker host)
+
+The configuration file is located at `docker/php/dev-xdebug.ini` and can be customized if needed.
+These configuration should work for most default IDEs setups. Tested with **PHPStorm**.
+
 
 ## Post Build and Pre Run optional scripts.
 
@@ -247,6 +221,148 @@ In `docker/` directory there is `post-build-*` and `pre-run-*` scripts that are 
       Ver esion, will try to access the DB at php's script initialization (even at the post-install cmd's), and it will
       fail when it cannot connect to
       DB. [Make sure you configure doctrine to avoid this extra DB Check connection.](https://symfony.com/doc/current/reference/configuration/doctrine.html#:~:text=The-,server_version,-option%20was%20added)
+
+--------
+
+# Running the Demo Applications
+
+This repository includes demo applications for both **Symfony** and **Laravel** to show you how an application is expected to be used with this template.
+
+## Symfony Demo
+
+The [Symfony Demo application](https://github.com/symfony/symfony-demo) is a full-featured demo that showcases best practices for Symfony development.
+
+**Quick Start:**
+```bash
+make demo/symfony/setup  # Set up the demo
+make demo/symfony/up     # Start in dev mode
+# Visit http://localhost:8080
+```
+
+<details>
+<summary><strong>Setup Details</strong></summary>
+
+```bash
+# Download and set up the Symfony demo application
+make demo/symfony/setup
+```
+
+This will download the latest [Symfony Demo application](https://github.com/symfony/symfony-demo), install dependencies, and prepare it for use.
+
+</details>
+
+<details>
+<summary><strong>Running Options</strong></summary>
+
+```bash
+# Start in development mode (with hot-reloading)
+make demo/symfony/up
+
+# Start in production mode (optimized)
+make demo/symfony/deploy
+```
+
+Visit [http://localhost:8080](http://localhost:8080) to see the Symfony demo app.
+
+</details>
+
+<details>
+<summary><strong>Cleanup</strong></summary>
+
+```bash
+# Remove the Symfony demo app
+make demo/symfony/clean
+```
+
+</details>
+
+## Laravel Demo
+
+The [Laravel application](https://github.com/laravel/laravel) is the official Laravel framework skeleton with all the features you need to get started.
+
+**Quick Start:**
+```bash
+make demo/laravel/setup  # Set up the demo
+make demo/laravel/up     # Start in dev mode
+# Visit http://localhost:8080
+```
+
+<details>
+<summary><strong>Setup Details</strong></summary>
+
+```bash
+# Download and set up the Laravel application
+make demo/laravel/setup
+```
+
+This will:
+- Download the latest Laravel application
+- Install composer dependencies
+- Set up the `.env` file
+- Generate the application encryption key
+- Create the SQLite database file
+- Run database migrations
+
+</details>
+
+<details>
+<summary><strong>Running Options</strong></summary>
+
+```bash
+# Start in development mode (with hot-reloading)
+make demo/laravel/up
+
+# Start in production mode (optimized)
+make demo/laravel/deploy
+```
+
+Visit [http://localhost:8080](http://localhost:8080) to see the Laravel application.
+
+</details>
+
+<details>
+<summary><strong>Cleanup</strong></summary>
+
+```bash
+# Remove the Laravel demo app
+make demo/laravel/clean
+```
+
+</details>
+
+<details>
+<summary><strong>Additional Commands</strong></summary>
+
+While the demo applications are running, you can use these commands:
+
+```bash
+# View container logs
+make logs
+
+# Execute artisan/console commands
+make command COMMAND="php artisan migrate"        # Laravel
+make command COMMAND="php bin/console cache:clear" # Symfony
+
+# Access container shell
+make shell
+
+# Stop the containers
+make down
+```
+
+</details>
+
+<details>
+<summary><strong>Important Notes</strong></summary>
+
+- Both demos use the same `./app` directory. To switch between frameworks, clean the current demo first.
+- The Laravel demo uses SQLite by default (database file at `app/database/database.sqlite`).
+- In development mode, code changes are hot-reloaded automatically.
+- In production mode, applications are optimized with cached config, routes, views, and events.
+
+</details>
+
+--------
 
 # License
 
