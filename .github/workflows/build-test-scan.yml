@@ -222,7 +222,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=scan-${{ matrix.platform }}
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.34.0
         with:
           image-ref: kubephp-app:scan
           format: sarif
