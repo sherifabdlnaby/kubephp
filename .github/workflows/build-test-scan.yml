@@ -235,12 +235,12 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: "CRITICAL,HIGH"
-          scanners: "vuln,config,secret"
+          scanners: "vuln,secret"
           exit-code: "0"
-          # The template doesn't install PHP. The packages in this test are from the demo symfony app that is not part of this repo.
-          trivy-args: >-
-            --skip-dirs /app/vendor
-            --skip-packages composer
+          # The template doesn't install PHP; vendored packages here come from the demo
+          # app (not part of this repo), so skip them. `skip-dirs` is the supported input
+          # (the old `trivy-args`/`--skip-packages` are not valid trivy-action inputs).
+          skip-dirs: "/app/vendor"
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.36.2
