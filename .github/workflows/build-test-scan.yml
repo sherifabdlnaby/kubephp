@@ -8,6 +8,7 @@ on:
     branches: [main]
   schedule:
     - cron: "41 5 * * 5"
+  workflow_dispatch: {}
 
 # Cancel superseded runs for the same ref.
 concurrency:
