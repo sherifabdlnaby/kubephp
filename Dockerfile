@@ -18,7 +18,7 @@ FROM composer:${COMPOSER_VERSION} AS composer
 
 # ======================================================================================================================
 #                                                   --- Base ---
-# ---------------  This stage install needed extenstions, plugins and add all needed configurations  -------------------
+# ---------------  This stage install needed extensions, plugins and add all needed configurations  -------------------
 # ======================================================================================================================
 
 FROM php:${PHP_VERSION}-fpm-alpine${PHP_ALPINE_VERSION} AS base
@@ -91,7 +91,7 @@ RUN apk add --no-cache --virtual .build-deps \
 
 # ------------------------------------------------- Permissions --------------------------------------------------------
 
-# - Clean bundled config/users & recreate them with UID 1000 for docker compatability in dev container.
+# - Clean bundled config/users & recreate them with UID 1000 for docker compatibility in dev container.
 # - Create composer directories (since we run as non-root later)
 # - Add Default Config
 RUN deluser --remove-home www-data && adduser -u1000 -D www-data && rm -rf /var/www /usr/local/etc/php-fpm.d/* && \
