@@ -201,8 +201,7 @@ postinstall = "hk install --mise" # self-installs git hooks on every `mise insta
 
 # ── ⚙️ settings ───────────────────────────────────────────────────────────────
 [settings]
-lockfile = true
-minimum_release_age = "7d"          # supply-chain cooldown: ignore releases <7d old
+lockfile = true                     # mise.lock pins exact versions + checksums + attestations per platform
 disable_backends = ["asdf", "vfox"]
 github.gh_cli_tokens = true         # avoid GitHub API rate limits on tool installs
 github.use_git_credentials = true
