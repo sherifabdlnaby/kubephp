@@ -5,6 +5,10 @@ min_version = "2026.6.11"
 
 # ── 🛠️ tools ──────────────────────────────────────────────────────────────────
 [tools]
+# uv backs the pipx tools (yamllint); without it mise falls back to pip, which rejects mise's
+# release-age flag. Pinned so CI installs yamllint the same way local does.
+uv = "0.11"
+
 # linters & formatters (this repo has no app runtime — it's Docker + shell + yaml/toml/md)
 hadolint = "2"      # Dockerfile
 shellcheck = "0.11" # POSIX /bin/sh scripts under docker/
