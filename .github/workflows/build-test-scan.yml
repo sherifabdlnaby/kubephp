@@ -230,7 +230,11 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # v0.34.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # auth trivy DB pulls to dodge anonymous rate limits
         with:
+          # Pin a real Trivy: this trivy-action release hardcodes v0.69.1, which doesn't exist (404).
+          version: v0.71.2
           image-ref: kubephp-app:scan
           format: sarif
           output: trivy-results.sarif
