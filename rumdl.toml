@@ -1,0 +1,19 @@
+# rumdl Markdown linter/formatter — https://github.com/rvben/rumdl
+# Scoped to structural rules; the full markdownlint suite is too noisy for the prose-heavy README.
+
+[global]
+cache = false
+# Only these rules run (replaces the default set). Add more as desired.
+enable = [
+  "MD001", # heading increment
+  "MD003", # heading style consistency
+  "MD009", # no trailing spaces
+  "MD010", # no hard tabs
+  "MD018", # space after hash on atx heading
+  "MD019", # no multiple spaces after hash
+  "MD022", # headings surrounded by blank lines
+  "MD023", # headings start at line beginning
+  "MD031", # fenced code surrounded by blank lines
+  "MD040", # fenced code has a language
+  "MD047", # file ends with single newline
+]

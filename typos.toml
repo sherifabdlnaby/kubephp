@@ -1,0 +1,10 @@
+# typos spell-checker config — https://github.com/crate-ci/typos
+# Genuine false positives only; real typos are fixed in-tree.
+
+[default.extend-identifiers]
+# Author name — not a misspelling of "Sheriff".
+"Sherif" = "Sherif"
+
+[default.extend-words]
+# Author name in prose (LICENSE, README copyright).
+"Sherif" = "Sherif"

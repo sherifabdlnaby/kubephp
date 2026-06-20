@@ -1,0 +1,12 @@
+# betterleaks secret scanner config — https://github.com/betterleaks/betterleaks
+[extend]
+useDefault = true # keep the built-in gitleaks-compatible rule set
+
+[allowlist]
+description = "Project false positives"
+# The committed self-signed dev TLS material is intentional (local HTTPS only).
+paths = [
+  '''docker/nginx/dev/certs/dev-selfsigned\.(crt|key)''',
+]
+# regexes = []
+# stopwords = []
