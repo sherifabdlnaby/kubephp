@@ -229,11 +229,12 @@ jobs:
           cache-to: type=gha,mode=max,scope=scan-${{ matrix.platform }}
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # v0.34.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # auth trivy DB pulls to dodge anonymous rate limits
         with:
-          # Pin a real Trivy: this trivy-action release hardcodes v0.69.1, which doesn't exist (404).
+          # >= 0.35.0 patches the supply-chain compromise (GHSA-69fq-xp46-6x23); v0.71.2 Trivy
+          # avoids the compromised 0.69.4 (and the non-existent 0.69.1 the action used to default to).
           version: v0.71.2
           image-ref: kubephp-app:scan
           format: sarif
