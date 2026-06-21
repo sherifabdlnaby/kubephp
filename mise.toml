@@ -77,8 +77,12 @@ description = "Run tests (no unit tests in this template; build & smoke-test liv
 run = 'echo "No unit tests. Build/scan runs in CI (build-test-scan.yml); try a demo: mise run demo:symfony:setup"'
 
 [tasks.build]
-description = "Build the images"
-run = "docker compose build"
+description = "Build the images (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to build; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose build $usage_service"
 
 [tasks.dev]
 description = "Start the dev stack (alias of up)"
@@ -99,16 +103,28 @@ description = "Stop the stack and clean up"
 run = "docker compose down"
 
 [tasks.start]
-description = "Start existing containers"
-run = "docker compose start"
+description = "Start existing containers (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to start; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose start $usage_service"
 
 [tasks.stop]
-description = "Stop containers"
-run = "docker compose stop"
+description = "Stop containers (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to stop; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose stop $usage_service"
 
 [tasks.logs]
-description = "Tail container logs"
-run = "docker compose logs --follow --tail=100"
+description = "Tail container logs (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to tail; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose logs --follow --tail=100 $usage_service"
 
 [tasks.images]
 description = "Show images created by this compose project"
@@ -127,16 +143,28 @@ description = "Run a one-off command as root, e.g. mise run command-root -- apk 
 run = "docker compose run --rm -u root app"
 
 [tasks.shell]
-description = "Open a shell in the running app container"
-run = "docker compose exec app /bin/sh"
+description = "Open a shell in a running service container (default: app)"
+usage = '''
+arg "[service]" help="compose service to enter; default: app"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose exec ${usage_service:-app} /bin/sh"
 
 [tasks.shell-root]
-description = "Open a root shell in the running app container"
-run = "docker compose exec -u root app /bin/sh"
+description = "Open a root shell in a running service container (default: app)"
+usage = '''
+arg "[service]" help="compose service to enter; default: app"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose exec -u root ${usage_service:-app} /bin/sh"
 
 [tasks.restart]
-description = "Restart containers"
-run = "docker compose restart"
+description = "Restart containers (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to restart; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose restart $usage_service"
 
 [tasks.rm]
 description = "Remove current containers"
