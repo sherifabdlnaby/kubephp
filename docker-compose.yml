@@ -35,4 +35,6 @@ services:
     ports:
       # Bound to loopback by default; change to 0.0.0.0 or front it with a proxy to expose externally.
       - '127.0.0.1:8080:8080'
+      # HTTPS (self-signed, dev only). Container listens on 8443 (non-root cannot bind 443).
+      - '127.0.0.1:8443:8443'
     restart: unless-stopped

@@ -156,6 +156,7 @@ OR
     1. For Dev: Make sure to delete previous `vendor` directory if you had it before.
     2. Docker-Compose will start App container first, and only start Web server when it's ready, on initial install, it might take some time.
 4. Go to [http://localhost:8080](http://localhost:8080)
+    1. HTTPS is also available in dev at [https://localhost:8443](https://localhost:8443) (self-signed cert, so expect a browser warning). It listens on `8443` rather than `443` because Nginx runs non-root and cannot bind privileged ports (<1024), which keeps it compatible with rootless runtimes like Podman.
 
 > The `mise` tasks are thin wrappers over docker compose commands. Run `mise tasks` to list them.
 
