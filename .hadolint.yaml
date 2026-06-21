@@ -1,0 +1,8 @@
+# hadolint config — https://github.com/hadolint/hadolint
+# Carried over from the previous lint.yml ignore list.
+ignored:
+  - DL3018 # pin apk add versions (Alpine backports compatibility — intentionally unpinned)
+  - DL3019 # use --no-cache instead of apk update/add (kept explicit)
+  - SC2086 # double-quote to prevent word splitting (intentional in entrypoint glue)
+
+failure-threshold: warning

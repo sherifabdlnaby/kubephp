@@ -1,0 +1,81 @@
+// hk.pkl — git hooks for this repo. Tools come from mise (`mise.toml [tools]`).
+// `mise run check` runs these; commits run the same set via the pre-commit hook.
+// Pinned to the installed hk; regenerate URLs with `hk init` after a version bump.
+amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+
+// Repo-wide ignores — committed paths only (.gitignore is already honored).
+local commonIgnores = List(
+  "app/**",                          // user's mounted PHP app (gitignored, but be explicit)
+  "docker/nginx/dev/certs/**",       // self-signed dev TLS cert/key
+  "docker/php/reference.*.ini.dist", // vendored PHP upstream php.ini reference dumps
+  "**/*.min.*",
+)
+
+// Linters defined once, shared by the `check` and `pre-commit` hooks below.
+local linters: Mapping<String, Step> = new Mapping<String, Step> {
+  // Dockerfile / shell / compose
+  ["hadolint"] = Builtins.hadolint
+  ["shellcheck"] = Builtins.shellcheck
+  ["shfmt"] = Builtins.shfmt
+  ["dclint"] = Builtins.dclint
+  // GitHub Actions
+  ["actionlint"] = Builtins.actionlint
+  ["zizmor"] = Builtins.zizmor
+  // Drop --verify (the SHA-vs-comment cross-check) so the step is hermetic: --check still fails
+  // on any unpinned action, but needs no GitHub token/network. zizmor's unpinned-uses backstops it.
+  ["pinact"] = (Builtins.pinact) {
+    check = "pinact run --check {{ files }}"
+    fix = "pinact run {{ files }}"
+  }
+  // config files
+  ["taplo"] = Builtins.taplo
+  ["yamllint"] = Builtins.yamllint
+  ["mise"] = Builtins.mise
+  // docs & spelling
+  ["rumdl"] = Builtins.rumdl
+  ["typos"] = Builtins.typos
+  // --offline: check local/relative links only; external URLs (examples like localhost:8080,
+  // domain.tld, php://input) are out of scope and would make CI flaky. (config `offline=true` is
+  // not honored by this lychee version, so pass the flag explicitly.)
+  ["lychee"] = (Builtins.lychee) { check = "lychee --offline --no-progress {{ files }}" }
+  // secrets
+  ["betterleaks"] = Builtins.betterleaks
+  ["detect_private_key"] = Builtins.detect_private_key
+  // generic hygiene
+  ["newlines"] = Builtins.newlines
+  ["trailing_whitespace"] = Builtins.trailing_whitespace
+  ["mixed_line_ending"] = Builtins.mixed_line_ending
+  ["check_added_large_files"] = Builtins.check_added_large_files
+  ["check_merge_conflict"] = Builtins.check_merge_conflict
+  ["check_case_conflict"] = Builtins.check_case_conflict
+  ["check_executables_have_shebangs"] = Builtins.check_executables_have_shebangs
+  ["check_symlinks"] = Builtins.check_symlinks
+  ["byte_order_marker"] = Builtins.byte_order_marker
+}
+
+exclude = commonIgnores
+
+hooks {
+  // `hk check` / `mise run check` — CI + manual lint (read-only; `--fix` applies).
+  ["check"] {
+    steps = linters
+  }
+
+  // `git commit` (staged) — fix inline; stash guards unstaged hunks.
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps = linters
+  }
+
+  // `git push` — no-op for now (keep slow gates off until the tree is clean).
+  ["pre-push"] {
+    steps {}
+  }
+
+  // Commit message — no-op.
+  ["commit-msg"] {
+    steps {}
+  }
+}

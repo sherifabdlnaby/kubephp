@@ -1,37 +1,112 @@
-# Lint workflow for Dockerfile and other configuration files
-
-name: Lint
+# Drives the project's own `mise run check` (the same task local dev + the pre-commit
+# hook use) and reports lint/format failures. On a PR it leaves one sticky comment
+# pointing the author at `mise run check --fix`. Copy and adapt. See references/ci.md.
+name: 🎨 Linters, Validators, and Formatters
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  pull_request: {}
+  schedule:
+    # Daily sweep so the default branch can't quietly rot.
+    - cron: "0 0 * * *"
+  # Run manually.
+  workflow_dispatch: {}
+
+# Read the repo; comment on PRs to point the author at the fix command.
+permissions:
+  contents: read
+  pull-requests: write
+
+# One run per PR (or ref) — newer pushes cancel stale runs.
+concurrency:
+  group: lint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  hadolint:
-    name: Dockerfile Lint
+  check:
+    name: check
     runs-on: ubuntu-latest
+
+    env:
+      # Pretty colors in the CI!
+      CLICOLOR_FORCE: "1"
+      FORCE_COLOR: "1"
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Hadolint Action
-        uses: hadolint/hadolint-action@v3.1.0
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          dockerfile: Dockerfile
-          ignore: DL3018,SC2086,DL3019
-          failure-threshold: warning
+          fetch-depth: 0 # full history so `check --pr` can diff against the default branch
+          persist-credentials: false
 
-  yaml-lint:
-    name: YAML Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Lint YAML files
-        uses: ibiqlik/action-yamllint@v3
+      - name: Setup mise
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          file_or_dir: .github/workflows/ docker-compose*.yml
-          config_file: .yamllint.yml
-          strict: false
-        continue-on-error: true
+          install: true
+          install_args: "--locked" # honor mise.lock
+          cache: true
+          experimental: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # SO tool installs don't hit API rate limits
+
+      # `check --pr` diffs against the default branch, but a pull_request checkout only has
+      # it as `origin/<base>` (HEAD is detached on the merge commit). Materialize a local
+      # branch so hk can resolve the ref instead of failing with "Failed to parse reference".
+      - name: Make base branch resolvable for `check --pr`
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }} # via env, not interpolated into the shell
+        run: git branch --force "$BASE_REF" "origin/$BASE_REF"
+
+      # Report only — the same `check` task local dev and the pre-commit hook run. We do NOT
+      # auto-fix in CI; on failure we point the author at `--fix` (see the comment step below).
+      # `--pr` scopes to changed files; `--all` covers the whole tree on schedule/dispatch.
+      - name: Run check
+        id: check
+        env:
+          REF_NAME: ${{ github.ref_name }} # via env, never interpolated into the shell (zizmor: template-injection)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if ! mise run check --pr; then
+              echo "::error::Lint & format failed. Fix it locally with 'mise run check --fix --pr', then push. ('mise run setup' installs the pre-commit hook so this happens automatically.)"
+              exit 1
+            fi
+          else
+            if ! mise run check --all; then
+              echo "::error::Lint & format failed on $REF_NAME. Fix it with 'mise run check --fix --all'."
+              exit 1
+            fi
+          fi
+
+      # One sticky PR comment pointing at `--fix`: post/update it when the check fails,
+      # delete it once the check passes. No inline suggestions — the author runs the fixer.
+      - name: Comment lint status
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script:
+            | # zizmor: ignore[template-injection] -- steps.check.outcome is a trusted success/failure value
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const MARKER = '<!-- mise-lint -->';
+            const BOT = 'github-actions[bot]';
+            const failed = '${{ steps.check.outcome }}' === 'failure';
+
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find((c) => c.user.login === BOT && (c.body || '').includes(MARKER));
+
+            if (failed) {
+              const body = [
+                MARKER,
+                '🚨 Lint & format failed. Fix it locally, then push:',
+                '',
+                '```bash',
+                'mise run check --fix --pr',
+                '```',
+                '',
+                'Run `mise run setup` once so the pre-commit hook does this on every commit.',
+              ].join('\n');
+              if (existing) await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              else await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            } else if (existing) {
+              await github.rest.issues.deleteComment({ owner, repo, comment_id: existing.id });
+            }

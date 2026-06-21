@@ -1,31 +1,23 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-# A sample workflow which checks out the code, builds multi-architecture container
-# images using Docker Buildx and scans that image for vulnerabilities using
-# Snyk. The results are then uploaded to GitHub Security Code Scanning
-#
-# For more examples, including how to limit scans to only high-severity
-# issues, monitor images for newly disclosed vulnerabilities in Snyk and
-# fail PR checks for new vulnerabilities, see https://github.com/snyk/actions/
-
+# Builds the multi-arch images, smoke-tests the stack, and scans for vulnerabilities.
 name: Build, Test, and Scan
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ main ]
+    branches: [main]
   schedule:
-    - cron: '41 5 * * 5'
+    - cron: "41 5 * * 5"
+  workflow_dispatch: {}
 
-# Prevent multiple concurrent runs for the same workflow
+# Cancel superseded runs for the same ref.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+# Minimal by default; the scan job widens its own scope below.
+permissions:
+  contents: read
 
 env:
   APP_BASE_DIR: "./app"
@@ -37,6 +29,8 @@ jobs:
   build:
     name: Build (${{ matrix.platform }} - ${{ matrix.target }})
     timeout-minutes: 30
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -56,26 +50,29 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: Install Demo App
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          WORKSPACE: ${{ github.workspace }}
         run: |
-          # Pull composer image for the correct platform
-          docker pull --platform ${{ matrix.platform }} composer:2
-          # Run composer create-project
-          docker run --rm --platform ${{ matrix.platform }} \
-            -v ${{ github.workspace }}:/app \
+          docker pull --platform "$PLATFORM" composer:2
+          docker run --rm --platform "$PLATFORM" \
+            -v "$WORKSPACE":/app \
             -w /app \
             composer:2 create-project \
             --no-install --no-scripts \
             symfony/symfony-demo app
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Extract metadata for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.target }}
           tags: |
@@ -85,7 +82,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -102,9 +99,10 @@ jobs:
 
       - name: Test the App Startup
         if: matrix.target == 'app'
+        env:
+          PLATFORM: ${{ matrix.platform }}
         run: |
-          # Run container with explicit platform to ensure native execution
-          docker run -d --name test-app --platform ${{ matrix.platform }} kubephp-app:test
+          docker run -d --name test-app --platform "$PLATFORM" kubephp-app:test
           sleep 5
           docker exec test-app php -v
           docker exec test-app php -m
@@ -115,6 +113,8 @@ jobs:
   integration-test:
     name: Integration Test (${{ matrix.platform }})
     timeout-minutes: 20
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -127,25 +127,29 @@ jobs:
     needs: build
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: Install Demo App
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          WORKSPACE: ${{ github.workspace }}
         run: |
-          # Pull composer image for the correct platform
-          docker pull --platform ${{ matrix.platform }} composer:2
-          # Run composer create-project
-          docker run --rm --platform ${{ matrix.platform }} \
-            -v ${{ github.workspace }}:/app \
+          docker pull --platform "$PLATFORM" composer:2
+          docker run --rm --platform "$PLATFORM" \
+            -v "$WORKSPACE":/app \
             -w /app \
             composer:2 create-project \
             --no-install --no-scripts \
             symfony/symfony-demo app
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
+      # Mirrors `mise run deploy` (kept inline so this job doesn't install the lint toolchain).
       - name: Build & Deploy
-        run: make deploy
+        run: docker compose -f docker-compose.prod.yml up --build -d
 
       - name: Wait for services to be ready
         run: |
@@ -188,25 +192,28 @@ jobs:
       actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: Install Demo App
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          WORKSPACE: ${{ github.workspace }}
         run: |
-          # Pull composer image for the correct platform
-          docker pull --platform ${{ matrix.platform }} composer:2
-          # Run composer create-project
-          docker run --rm --platform ${{ matrix.platform }} \
-            -v ${{ github.workspace }}:/app \
+          docker pull --platform "$PLATFORM" composer:2
+          docker run --rm --platform "$PLATFORM" \
+            -v "$WORKSPACE":/app \
             -w /app \
             composer:2 create-project \
             --no-install --no-scripts \
             symfony/symfony-demo app
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Build app image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -222,21 +229,26 @@ jobs:
           cache-to: type=gha,mode=max,scope=scan-${{ matrix.platform }}
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # auth trivy DB pulls to dodge anonymous rate limits
         with:
+          # >= 0.35.0 patches the supply-chain compromise (GHSA-69fq-xp46-6x23); v0.71.2 Trivy
+          # avoids the compromised 0.69.4 (and the non-existent 0.69.1 the action used to default to).
+          version: v0.71.2
           image-ref: kubephp-app:scan
           format: sarif
           output: trivy-results.sarif
-          severity: 'CRITICAL,HIGH'
-          scanners: 'vuln,config,secret'
-          exit-code: '0'
-          # The template doesn't install PHP. The packages in this test are from the demo symfony app that is not part of this repo.
-          trivy-args: >-
-            --skip-dirs /app/vendor
-            --skip-packages composer
+          severity: "CRITICAL,HIGH"
+          scanners: "vuln,secret"
+          exit-code: "0"
+          # The template doesn't install PHP; vendored packages here come from the demo
+          # app (not part of this repo), so skip them. `skip-dirs` is the supported input
+          # (the old `trivy-args`/`--skip-packages` are not valid trivy-action inputs).
+          skip-dirs: "/app/vendor"
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.36.2
         if: always()
         with:
           sarif_file: trivy-results.sarif

@@ -1,5 +1,6 @@
 # Production Docker Compose Configuration
 # Uses immutable images with code baked in
+name: kubephp
 
 services:
   app:
@@ -21,12 +22,13 @@ services:
       args:
         APP_BASE_DIR: ${APP_BASE_DIR-.}
         OS_PACKAGE_UPGRADE_TRIGGER: ${OS_PACKAGE_UPGRADE_TRIGGER-1}
-    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
     environment:
       # The Hostname for the FPM (needs to match the hostname for the `app`)
       PHP_FPM_HOST: app
     ports:
-      - 8080:8080
-    depends_on:
-      app:
-        condition: service_healthy
+      # Bound to loopback by default; front it with a reverse proxy / ingress to expose externally.
+      - '127.0.0.1:8080:8080'
+    restart: unless-stopped

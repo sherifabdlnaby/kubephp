@@ -22,7 +22,7 @@
 # 8 - Couldn't reach PHP fpm status page, have you configured it with `pm.status_path = /status`?
 # 1 - A healthcheck condition has failed
 # 3 - Invalid option given
-# 4 - One or more required softwares are missing
+# 4 - One or more required software is missing
 #
 # Available options:
 # -v|--verbose
@@ -92,7 +92,7 @@ PARAM_AMOUNT=0
 # $1 - fpm option
 # $2 - expected value threshold
 check_later() {
-    # The POSIX sh way to check if it's an integer, also the output is supressed since it's polution
+    # The POSIX sh way to check if it's an integer, also the output is suppressed since it's pollution
     if ! test "$2" -eq "$2" 2> /dev/null; then
         >&2 printf "'%s' option value must be an integer, '%s' given\\n" "$1" "$2"; exit 3;
     fi

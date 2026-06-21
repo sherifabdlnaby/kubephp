@@ -1,0 +1,3 @@
+# lychee link checker config — https://github.com/lycheeverse/lychee
+# Offline: resolve local/relative links only; http(s) links show as excluded, not checked.
+offline = true

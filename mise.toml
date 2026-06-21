@@ -1,0 +1,239 @@
+# mise config — single source of truth for tools & tasks. See README.md / AGENTS.md.
+# Fresh clone: `mise trust && mise run setup`. Lint: `mise run check`. List tasks: `mise tasks`.
+
+min_version = "2026.6.11"
+
+# ── 🛠️ tools ──────────────────────────────────────────────────────────────────
+[tools]
+# uv backs the pipx tools (yamllint); without it mise falls back to pip, which rejects mise's
+# release-age flag. Pinned so CI installs yamllint the same way local does.
+uv = "0.11"
+
+# linters & formatters (this repo has no app runtime — it's Docker + shell + yaml/toml/md)
+hadolint = "2"      # Dockerfile
+shellcheck = "0.11" # POSIX /bin/sh scripts under docker/
+shfmt = "3"         # shell formatter
+actionlint = "1"    # GitHub Actions
+zizmor = "1"        # GitHub Actions security
+pinact = "3"        # pin GitHub Actions to SHAs
+"npm:dclint" = "3"  # docker-compose linter
+taplo = "0.10"      # TOML lint/format (this file)
+yamllint = "1"      # YAML structure
+typos = "1"         # spell check
+betterleaks = "1"   # secret scanner
+lychee = "0.20"     # broken-link checker (offline)
+rumdl = "0.2"       # Markdown lint/format
+
+# pre-commit
+hk = "1.48.0"
+
+# ── 🌳 environment ────────────────────────────────────────────────────────────
+[env]
+# Path to the PHP app mounted into the image; mirrors docker-compose's ${APP_BASE_DIR-.}
+APP_BASE_DIR = "{{ env.APP_BASE_DIR | default(value='.') }}"
+
+# ── 📏 vars ───────────────────────────────────────────────────────────────────
+[vars]
+setup_version = "1" # bump to nudge contributors to re-run `mise run setup`
+
+# ── ▶️ tasks ──────────────────────────────────────────────────────────────────
+# Standard tasks ---------------------------------------------------------------
+[tasks.setup] # one-time, idempotent bootstrap
+description = "Install all tools (and self-install git hooks)"
+depends_post = ["setup:stamp"]
+run = "mise install"
+
+[tasks."setup:stamp"]
+hide = true
+quiet = true
+run = 'printf %s "{{vars.setup_version}}" > .mise/setup && echo "✅ Setup v{{vars.setup_version}} stamped"'
+
+[tasks."setup:check"] # runs on `enter`; warns if stale, never fails
+hide = true
+quiet = true
+run = '[ "$(cat .mise/setup 2>/dev/null)" = "{{vars.setup_version}}" ] || echo "⚠️  Your setup is stale, run: mise run setup" >&2'
+
+[tasks.check]
+description = "Run all linters/formatters/validators (same set as pre-commit & CI)"
+alias = ["lint"]
+usage = '''
+    flag "--fix"              help="apply fixes instead of only reporting"
+    flag "--all"              help="run on all files (default: staged only)"
+    flag "--pr"               help="only files changed vs the default branch (conflicts with --all)"
+    flag "--fail-fast"        help="stop at the first failing step (default: run all, report every failure)"
+    flag "--step <step>"      var=#true help="run only these step(s)"
+    flag "--skip-step <step>" var=#true help="skip these step(s)"
+    complete "step" run="hk check --plan --all --json --no-progress 2>/dev/null | jq -r '.steps[].name'"
+'''
+run = '''
+ff=${usage_fail_fast:+--fail-fast}; ff=${ff:---no-fail-fast}
+hk check $ff ${usage_fix:+--fix} ${usage_all:+--all} ${usage_pr:+--pr} \
+  ${usage_step:+$(printf -- '--step %s ' $usage_step)} \
+  ${usage_skip_step:+$(printf -- '--skip-step %s ' $usage_skip_step)}
+'''
+
+[tasks.test]
+description = "Run tests (no unit tests in this template; build & smoke-test live in CI / demo:* tasks)"
+run = 'echo "No unit tests. Build/scan runs in CI (build-test-scan.yml); try a demo: mise run demo:symfony:setup"'
+
+[tasks.build]
+description = "Build the images (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to build; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose build $usage_service"
+
+[tasks.dev]
+description = "Start the dev stack (alias of up)"
+alias = ["up"]
+run = "docker compose up -d"
+
+# docker-compose lifecycle (migrated from Makefile) ----------------------------
+[tasks.deploy]
+description = "Start the production image in production mode"
+run = "docker compose -f docker-compose.prod.yml up --build -d"
+
+[tasks.build-up]
+description = "Start the stack, rebuilding if necessary"
+run = "docker compose up --build -d"
+
+[tasks.down]
+description = "Stop the stack and clean up"
+run = "docker compose down"
+
+[tasks.start]
+description = "Start existing containers (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to start; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose start $usage_service"
+
+[tasks.stop]
+description = "Stop containers (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to stop; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose stop $usage_service"
+
+[tasks.logs]
+description = "Tail container logs (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to tail; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose logs --follow --tail=100 $usage_service"
+
+[tasks.images]
+description = "Show images created by this compose project"
+run = "docker compose images"
+
+[tasks.ps]
+description = "Show running containers"
+run = "docker compose ps"
+
+[tasks.command]
+description = "Run a one-off command in a fresh app container, e.g. mise run command -- php -v"
+run = "docker compose run --rm app"
+
+[tasks.command-root]
+description = "Run a one-off command as root, e.g. mise run command-root -- apk add ..."
+run = "docker compose run --rm -u root app"
+
+[tasks.shell]
+description = "Open a shell in a running service container (default: app)"
+usage = '''
+arg "[service]" help="compose service to enter; default: app"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose exec ${usage_service:-app} /bin/sh"
+
+[tasks.shell-root]
+description = "Open a root shell in a running service container (default: app)"
+usage = '''
+arg "[service]" help="compose service to enter; default: app"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose exec -u root ${usage_service:-app} /bin/sh"
+
+[tasks.restart]
+description = "Restart containers (optionally specific services)"
+usage = '''
+arg "[service]" var=#true help="compose service(s) to restart; default: all"
+complete "service" run="docker compose config --services 2>/dev/null"
+'''
+run = "docker compose restart $usage_service"
+
+[tasks.rm]
+description = "Remove current containers"
+run = "docker compose rm -f"
+
+# demo apps (migrated from Makefile demo/*) ------------------------------------
+[tasks."demo:symfony:setup"]
+description = "Download the latest Symfony Demo app into ./app for testing"
+run = '''
+if [ -d "app" ]; then echo "Warning: 'app' already exists. Remove it first for a fresh install."; exit 1; fi
+echo "Downloading latest Symfony Demo application..."
+docker run --rm -v "$PWD":/app -w /app composer:2 create-project symfony/symfony-demo app --no-install --no-scripts
+echo "Installing composer dependencies..."
+docker run --rm -v "$PWD"/app:/app -w /app composer:2 install --ignore-platform-reqs --no-scripts
+echo "Demo app downloaded to ./app/ — run 'mise run demo:symfony:up'"
+'''
+
+[tasks."demo:symfony:up"]
+description = "Start the Symfony demo in dev mode (APP_BASE_DIR=./app)"
+env.APP_BASE_DIR = "./app"
+run = ["docker compose up --build -d", 'echo "Visit http://localhost:8080"']
+
+[tasks."demo:symfony:deploy"]
+description = "Start the Symfony demo in prod mode (APP_BASE_DIR=./app)"
+env.APP_BASE_DIR = "./app"
+run = "docker compose -f docker-compose.prod.yml up --build -d"
+
+[tasks."demo:symfony:clean"]
+description = "Remove the demo app directory"
+run = 'rm -rf app && echo "demo app removed"'
+
+[tasks."demo:laravel:setup"]
+description = "Download the latest Laravel app into ./app for testing"
+run = '''
+if [ -d "app" ]; then echo "Warning: 'app' already exists. Remove it first for a fresh install."; exit 1; fi
+echo "Downloading latest Laravel application..."
+docker run --rm -v "$PWD":/app -w /app composer:2 create-project laravel/laravel app --no-install --no-scripts
+echo "Installing composer dependencies..."
+docker run --rm -v "$PWD"/app:/app -w /app composer:2 install --ignore-platform-reqs --no-scripts
+if [ ! -f "app/.env" ] && [ -f "app/.env.example" ]; then cp app/.env.example app/.env; fi
+echo "Generating Laravel application key..."
+docker run --rm -v "$PWD"/app:/app -w /app composer:2 sh -c "composer dump-autoload --no-interaction && php artisan key:generate --force --no-interaction || true"
+mkdir -p app/database && touch app/database/database.sqlite
+docker run --rm -v "$PWD"/app:/app -w /app composer:2 sh -c "php artisan migrate --force --no-interaction || true"
+echo "Demo app downloaded to ./app/ — run 'mise run demo:laravel:up'"
+'''
+
+[tasks."demo:laravel:up"]
+description = "Start the Laravel demo in dev mode (APP_BASE_DIR=./app)"
+env.APP_BASE_DIR = "./app"
+run = ["docker compose up --build -d", 'echo "Visit http://localhost:8080"']
+
+[tasks."demo:laravel:deploy"]
+description = "Start the Laravel demo in prod mode (APP_BASE_DIR=./app)"
+env.APP_BASE_DIR = "./app"
+run = "docker compose -f docker-compose.prod.yml up --build -d"
+
+[tasks."demo:laravel:clean"]
+description = "Remove the demo app directory"
+run = 'rm -rf app && echo "demo app removed"'
+
+# ── 🪝 hooks ──────────────────────────────────────────────────────────────────
+[hooks]
+enter = "mise run setup:check"
+postinstall = "hk install --mise" # self-installs git hooks on every `mise install`
+
+# ── ⚙️ settings ───────────────────────────────────────────────────────────────
+[settings]
+lockfile = true                     # mise.lock pins exact versions + checksums + attestations per platform
+disable_backends = ["asdf", "vfox"]
+github.gh_cli_tokens = true         # avoid GitHub API rate limits on tool installs
+github.use_git_credentials = true

@@ -1,5 +1,6 @@
 # Development Docker Compose Configuration
 # Supports hot-reloading with mounted volumes
+name: kubephp
 
 services:
   app:
@@ -12,11 +13,11 @@ services:
         COMPOSER_AUTH: "{}"
         APP_BASE_DIR: ${APP_BASE_DIR-.}
         OS_PACKAGE_UPGRADE_TRIGGER: ${OS_PACKAGE_UPGRADE_TRIGGER-1}
-    restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - ${APP_BASE_DIR-.}:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
 
   web:
     build:
@@ -24,13 +25,16 @@ services:
       target: web-dev
       args:
         APP_BASE_DIR: ${APP_BASE_DIR-.}
-    restart: unless-stopped
-    ports:
-      - 8080:8080
+    depends_on:
+      - app
+    volumes:
+      - ${APP_BASE_DIR-.}/public:/app/public
     environment:
       # The Hostname for the FPM (needs to match the hostname for the `app`)
       PHP_FPM_HOST: app
-    volumes:
-      - ${APP_BASE_DIR-.}/public:/app/public
-    depends_on:
-      - app
+    ports:
+      # Bound to loopback by default; change to 0.0.0.0 or front it with a proxy to expose externally.
+      - '127.0.0.1:8080:8080'
+      # HTTPS (self-signed, dev only). Container listens on 8443 (non-root cannot bind 443).
+      - '127.0.0.1:8443:8443'
+    restart: unless-stopped
