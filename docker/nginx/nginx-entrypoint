@@ -1,8 +1,11 @@
 #!/bin/sh
 set -eu
 
-# Envsubset all files and only replace exported envs.
-for f in $(find /etc/nginx/ -name "*.conf"); do cat $f | envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" > "$f.tmp"; mv "$f.tmp" "$f"; done
+# Envsubst all conf files, only replacing exported envs.
+find /etc/nginx/ -name "*.conf" | while IFS= read -r f; do
+	envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" <"$f" >"$f.tmp"
+	mv "$f.tmp" "$f"
+done
 
 # Give FPM some time to warmup
 sleep 1

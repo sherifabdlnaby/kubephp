@@ -9,12 +9,10 @@ set -e
 #    && rm /tmp/envsrc && unset env_overwrite && unset env_local_overwrite
 #set +a
 
-
 # This script working dir is application's directory, and all ENV variables from .env and OS are available here
 # using ${ENV_NAME} with defaults taken from .env and .env.<env>
 #
 # Ex:
 #   { echo ${DATABASE_URL};  echo "stdin input"; } | vendor/bin/<script that need stdin input>
-
 
 # Put Custom Ad-hoc scripts below:
