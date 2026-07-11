@@ -2,11 +2,6 @@
 # Supports hot-reloading with mounted volumes
 name: kubephp
 
-secrets:
-  # Override with COMPOSER_AUTH_FILE=/path/to/auth.json for private Composer repos.
-  composer_auth:
-    file: ${COMPOSER_AUTH_FILE:-./docker/composer-auth.default.json}
-
 services:
   app:
     build:
@@ -42,3 +37,8 @@ services:
       # HTTPS (self-signed, dev only). Container listens on 8443 (non-root cannot bind 443).
       - '127.0.0.1:8443:8443'
     restart: unless-stopped
+
+secrets:
+  # Override with COMPOSER_AUTH_FILE=/path/to/auth.json for private Composer repos.
+  composer_auth:
+    file: ${COMPOSER_AUTH_FILE:-./docker/composer-auth.default.json}

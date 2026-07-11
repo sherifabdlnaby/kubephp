@@ -3,10 +3,8 @@
 extends: default
 
 rules:
-  # Line length - allow longer lines for readability
-  line-length:
-    max: 200
-    level: warning
+  # Cosmetic; yamllint --strict promotes warnings to errors, so keep this off.
+  line-length: disable
 
   # Allow comments at end of lines
   comments:

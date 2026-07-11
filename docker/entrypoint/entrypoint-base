@@ -14,5 +14,5 @@ pre-run-base
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Run Dockerfile's CMD (default: $> php-fpm )
-echo "► Starting... cmd: ${@}"
-exec tini -- "${@}"
+echo "► Starting... cmd: $*"
+exec tini -- "$@"

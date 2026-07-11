@@ -16,8 +16,37 @@ local commonIgnores = List(
 local linters: Mapping<String, Step> = new Mapping<String, Step> {
   // Dockerfile / shell / compose
   ["hadolint"] = Builtins.hadolint
-  ["shellcheck"] = Builtins.shellcheck
-  ["shfmt"] = Builtins.shfmt
+  // Extensionless POSIX scripts under docker/ (entrypoints, hooks, helpers) — the builtin
+  // only matches *.sh/*.bash, so without this override those files are never linted.
+  ["shellcheck"] = (Builtins.shellcheck) {
+    glob = List(
+      "**/*.sh",
+      "**/*.bash",
+      "docker/entrypoint/**",
+      "docker/scripts/**",
+      "docker/pre-run/**",
+      "docker/post-build/**",
+      "docker/nginx/nginx-entrypoint",
+      "docker/nginx/nginx-healthcheck",
+      "docker/fpm/healthcheck-fpm",
+    )
+  }
+  ["shfmt"] = (Builtins.shfmt) {
+    glob = List(
+      "**/*.sh",
+      "**/*.bash",
+      "**/*.mksh",
+      "**/*.bats",
+      "**/*.zsh",
+      "docker/entrypoint/**",
+      "docker/scripts/**",
+      "docker/pre-run/**",
+      "docker/post-build/**",
+      "docker/nginx/nginx-entrypoint",
+      "docker/nginx/nginx-healthcheck",
+      "docker/fpm/healthcheck-fpm",
+    )
+  }
   ["dclint"] = Builtins.dclint
   // GitHub Actions
   ["actionlint"] = Builtins.actionlint
