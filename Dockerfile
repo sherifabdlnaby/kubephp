@@ -38,7 +38,7 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
 # OS_PACKAGE_UPGRADE_TRIGGER busts cache so SECURITY_UPGRADES re-resolve against Alpine indexes.
-RUN OS_PACKAGE_UPGRADE_TRIGGER=${OS_PACKAGE_UPGRADE_TRIGGER} && \
+RUN : "${OS_PACKAGE_UPGRADE_TRIGGER}" && \
     RUNTIME_DEPS="tini fcgi"; \
     apk update && \
     apk add --no-cache --upgrade ${RUNTIME_DEPS} ${SECURITY_UPGRADES}
@@ -166,7 +166,8 @@ COPY $APP_BASE_DIR/composer.lock composer.lock
 RUN --mount=type=secret,id=composer_auth,required=false \
     composer config platform.php ${PHP_VERSION}; \
     if [ -f /run/secrets/composer_auth ]; then \
-      export COMPOSER_AUTH="$(cat /run/secrets/composer_auth)"; \
+      COMPOSER_AUTH="$(cat /run/secrets/composer_auth)"; \
+      export COMPOSER_AUTH; \
     fi; \
     composer install -n --no-progress --ignore-platform-reqs --no-dev --prefer-dist --no-scripts --no-autoloader
 
@@ -266,7 +267,7 @@ ARG OS_PACKAGE_UPGRADE_TRIGGER
 ARG SECURITY_UPGRADES
 
 # OS_PACKAGE_UPGRADE_TRIGGER busts cache so SECURITY_UPGRADES re-resolve against Alpine indexes.
-RUN OS_PACKAGE_UPGRADE_TRIGGER=${OS_PACKAGE_UPGRADE_TRIGGER} && \
+RUN : "${OS_PACKAGE_UPGRADE_TRIGGER}" && \
     apk update && \
     apk add --no-cache --upgrade ${SECURITY_UPGRADES}
 
