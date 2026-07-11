@@ -171,12 +171,21 @@ However, in an environment where CI/CD pipelines will build the image, they will
     | **ARG**              | **Description** | **Default** |
     |----------------------|-----------------|-------------|
     | `PHP_VERSION`        | PHP Version used in the Image | `8.4` |
-    | `PHP_ALPINE_VERSION` | Alpine Version for the PHP Image | `3.21` |
+    | `PHP_ALPINE_VERSION` | Alpine Version for the PHP Image | `3.22` |
     | `NGINX_VERSION`      | Nginx Version | `1.28` |
     | `COMPOSER_VERSION`   | Composer Version used in Image | `2` |
-    | `COMPOSER_AUTH`      | A Json Object with Bitbucket or Github token to clone private Repos with composer.</br>[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth) | `{}` |
     | `XDEBUG_VERSION`     | Xdebug Version to use in Development Image | `3.5.0` |
-    | `OS_PACKAGE_UPGRADE_TRIGGER` | Cache buster for OS packages. Changing this value triggers a fresh installation and update of all OS packages. See [OS Package Cache Busting](#os-package-cache-busting) for details. | `1` |
+    | `OS_PACKAGE_UPGRADE_TRIGGER` | Cache buster for OS packages. Changing this value triggers a fresh installation and update of all OS packages. See [OS Package Cache Busting](#os-package-cache-busting) for details. | `2` |
+    | `SECURITY_UPGRADES`  | Alpine packages force-upgraded on top of the base image (openssl family, busybox, musl, …) | see Dockerfile |
+
+Composer private-repo auth is a **BuildKit secret** (`id=composer_auth`), not a build-arg (tokens never land in image layers):
+
+```bash
+docker build --secret id=composer_auth,src=./auth.json …
+# compose: set COMPOSER_AUTH_FILE=/path/to/auth.json (defaults to docker/composer-auth.default.json)
+```
+
+[Reference](https://getcomposer.org/doc/03-cli.md#composer-auth).
 
 #### Image Targets
 

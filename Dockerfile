@@ -1,12 +1,13 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
 ARG PHP_VERSION="8.4"
-ARG PHP_ALPINE_VERSION="3.21"
+ARG PHP_ALPINE_VERSION="3.22"
 ARG NGINX_VERSION="1.28"
 ARG COMPOSER_VERSION="2"
 ARG XDEBUG_VERSION="3.5.0"
-ARG COMPOSER_AUTH
 ARG APP_BASE_DIR="."
-ARG OS_PACKAGE_UPGRADE_TRIGGER="1"
+ARG OS_PACKAGE_UPGRADE_TRIGGER="2"
+# Alpine security backports the base image may not ship yet (openssl family, busybox, musl, …).
+ARG SECURITY_UPGRADES="curl openssl libssl3 libcrypto3 c-ares libxml2 musl-utils busybox libsodium"
 
 # Target platform for multi-arch builds (set by buildx)
 ARG TARGETPLATFORM
@@ -26,6 +27,7 @@ FROM php:${PHP_VERSION}-fpm-alpine${PHP_ALPINE_VERSION} AS base
 # Required Args ( inherited from start of file, or passed at build )
 ARG XDEBUG_VERSION
 ARG OS_PACKAGE_UPGRADE_TRIGGER
+ARG SECURITY_UPGRADES
 
 # Maintainer label
 LABEL maintainer="sherifabdlnaby@gmail.com"
@@ -35,10 +37,9 @@ LABEL maintainer="sherifabdlnaby@gmail.com"
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # ------------------------------------- Install Packages Needed Inside Base Image --------------------------------------
-# OS_PACKAGE_UPGRADE_TRIGGER is used to bust cache and trigger fresh package installation when changed
+# OS_PACKAGE_UPGRADE_TRIGGER busts cache so SECURITY_UPGRADES re-resolve against Alpine indexes.
 RUN OS_PACKAGE_UPGRADE_TRIGGER=${OS_PACKAGE_UPGRADE_TRIGGER} && \
     RUNTIME_DEPS="tini fcgi"; \
-    SECURITY_UPGRADES="curl"; \
     apk update && \
     apk add --no-cache --upgrade ${RUNTIME_DEPS} ${SECURITY_UPGRADES}
 
@@ -151,13 +152,7 @@ CMD ["php-fpm"]
 FROM composer AS vendor
 
 ARG PHP_VERSION
-ARG COMPOSER_AUTH
 ARG APP_BASE_DIR
-
-# A Json Object with remote repository token to clone private Repos with composer
-# Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
-# Note: For production, consider using Docker BuildKit secrets instead
-ENV COMPOSER_AUTH=${COMPOSER_AUTH}
 
 WORKDIR /app
 
@@ -165,9 +160,14 @@ WORKDIR /app
 COPY $APP_BASE_DIR/composer.json composer.json
 COPY $APP_BASE_DIR/composer.lock composer.lock
 
-# Set PHP Version of the Image
-RUN composer config platform.php ${PHP_VERSION}; \
-    # Install Dependencies
+# COMPOSER_AUTH via BuildKit secret (not ARG/ENV) so tokens never land in image layers.
+# Pass with: docker build --secret id=composer_auth,env=COMPOSER_AUTH
+# Reference: https://getcomposer.org/doc/03-cli.md#composer-auth
+RUN --mount=type=secret,id=composer_auth,required=false \
+    composer config platform.php ${PHP_VERSION}; \
+    if [ -f /run/secrets/composer_auth ]; then \
+      export COMPOSER_AUTH="$(cat /run/secrets/composer_auth)"; \
+    fi; \
     composer install -n --no-progress --ignore-platform-reqs --no-dev --prefer-dist --no-scripts --no-autoloader
 
 # ======================================================================================================================
@@ -263,10 +263,12 @@ FROM nginx:${NGINX_VERSION}-alpine AS nginx
 
 # Required Args ( inherited from start of file, or passed at build )
 ARG OS_PACKAGE_UPGRADE_TRIGGER
+ARG SECURITY_UPGRADES
 
-# OS_PACKAGE_UPGRADE_TRIGGER is used to bust cache and trigger fresh package installation when changed
+# OS_PACKAGE_UPGRADE_TRIGGER busts cache so SECURITY_UPGRADES re-resolve against Alpine indexes.
 RUN OS_PACKAGE_UPGRADE_TRIGGER=${OS_PACKAGE_UPGRADE_TRIGGER} && \
-    apk update
+    apk update && \
+    apk add --no-cache --upgrade ${SECURITY_UPGRADES}
 
 RUN rm -rf /var/www/* /etc/nginx/conf.d/* && adduser -u 1000 -D -S -G www-data www-data
 COPY docker/nginx/nginx-*   /usr/local/bin/
