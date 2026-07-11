@@ -50,7 +50,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -66,13 +66,18 @@ jobs:
             composer:2 create-project \
             --no-install --no-scripts \
             symfony/symfony-demo app
+          # Packagist tarball can ship a lock that lags composer.json; refresh the lock metadata only.
+          docker run --rm --platform "$PLATFORM" \
+            -v "$WORKSPACE":/app \
+            -w /app/app \
+            composer:2 update --lock --no-install --no-scripts --ignore-platform-reqs -n --no-progress
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Extract metadata for Docker
         id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.target }}
           tags: |
@@ -82,7 +87,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -94,6 +99,8 @@ jobs:
             APP_BASE_DIR=${{ env.APP_BASE_DIR }}
             BUILDPLATFORM=${{ matrix.platform }}
             TARGETPLATFORM=${{ matrix.platform }}
+          secret-files: |
+            composer_auth=./docker/composer-auth.default.json
           cache-from: type=gha,scope=${{ matrix.platform }}-${{ matrix.target }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}-${{ matrix.target }}
 
@@ -127,7 +134,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -143,9 +150,13 @@ jobs:
             composer:2 create-project \
             --no-install --no-scripts \
             symfony/symfony-demo app
+          docker run --rm --platform "$PLATFORM" \
+            -v "$WORKSPACE":/app \
+            -w /app/app \
+            composer:2 update --lock --no-install --no-scripts --ignore-platform-reqs -n --no-progress
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       # Mirrors `mise run deploy` (kept inline so this job doesn't install the lint toolchain).
       - name: Build & Deploy
@@ -192,7 +203,7 @@ jobs:
       actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -208,12 +219,16 @@ jobs:
             composer:2 create-project \
             --no-install --no-scripts \
             symfony/symfony-demo app
+          docker run --rm --platform "$PLATFORM" \
+            -v "$WORKSPACE":/app \
+            -w /app/app \
+            composer:2 update --lock --no-install --no-scripts --ignore-platform-reqs -n --no-progress
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Build app image for scanning
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -225,6 +240,8 @@ jobs:
             APP_BASE_DIR=${{ env.APP_BASE_DIR }}
             BUILDPLATFORM=${{ matrix.platform }}
             TARGETPLATFORM=${{ matrix.platform }}
+          secret-files: |
+            composer_auth=./docker/composer-auth.default.json
           cache-from: type=gha,scope=scan-${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=scan-${{ matrix.platform }}
 
@@ -248,7 +265,7 @@ jobs:
           skip-dirs: "/app/vendor"
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.36.2
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         if: always()
         with:
           sarif_file: trivy-results.sarif
