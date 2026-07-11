@@ -2,17 +2,21 @@
 # Supports hot-reloading with mounted volumes
 name: kubephp
 
+secrets:
+  # Override with COMPOSER_AUTH_FILE=/path/to/auth.json for private Composer repos.
+  composer_auth:
+    file: ${COMPOSER_AUTH_FILE:-./docker/composer-auth.default.json}
+
 services:
   app:
     build:
       context: .
       target: app-dev
       args:
-        # To authenticate to private registry either use username / password, or Oauth key/secret / etc
-        # Please add Composer Auth JSON Object
-        COMPOSER_AUTH: "{}"
         APP_BASE_DIR: ${APP_BASE_DIR-.}
-        OS_PACKAGE_UPGRADE_TRIGGER: ${OS_PACKAGE_UPGRADE_TRIGGER-1}
+        OS_PACKAGE_UPGRADE_TRIGGER: ${OS_PACKAGE_UPGRADE_TRIGGER-2}
+      secrets:
+        - composer_auth
     volumes:
       - ${APP_BASE_DIR-.}:/app
     extra_hosts:
