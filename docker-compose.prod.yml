@@ -2,11 +2,6 @@
 # Uses immutable images with code baked in
 name: kubephp
 
-secrets:
-  # Override with COMPOSER_AUTH_FILE=/path/to/auth.json for private Composer repos.
-  composer_auth:
-    file: ${COMPOSER_AUTH_FILE:-./docker/composer-auth.default.json}
-
 services:
   app:
     build:
@@ -36,3 +31,8 @@ services:
       # Bound to loopback by default; front it with a reverse proxy / ingress to expose externally.
       - '127.0.0.1:8080:8080'
     restart: unless-stopped
+
+secrets:
+  # Override with COMPOSER_AUTH_FILE=/path/to/auth.json for private Composer repos.
+  composer_auth:
+    file: ${COMPOSER_AUTH_FILE:-./docker/composer-auth.default.json}
