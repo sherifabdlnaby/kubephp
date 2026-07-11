@@ -8,8 +8,14 @@ on:
   schedule:
     # Daily sweep so the default branch can't quietly rot.
     - cron: "0 0 * * *"
-  # Run manually.
-  workflow_dispatch: {}
+  # Run manually — pick the scope: --all (whole tree) or --pr (this branch's diff vs the default branch).
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: "Files to check"
+        type: choice
+        options: [all, pr]
+        default: all
 
 # Read the repo; comment on PRs to point the author at the fix command.
 permissions:
@@ -48,34 +54,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # SO tool installs don't hit API rate limits
 
-      # `check --pr` diffs against the default branch, but a pull_request checkout only has
-      # it as `origin/<base>` (HEAD is detached on the merge commit). Materialize a local
-      # branch so hk can resolve the ref instead of failing with "Failed to parse reference".
-      - name: Make base branch resolvable for `check --pr`
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }} # via env, not interpolated into the shell
-        run: git branch --force "$BASE_REF" "origin/$BASE_REF"
-
-      # Report only — the same `check` task local dev and the pre-commit hook run. We do NOT
-      # auto-fix in CI; on failure we point the author at `--fix` (see the comment step below).
-      # `--pr` scopes to changed files; `--all` covers the whole tree on schedule/dispatch.
+      # Report only — same `check` task local dev and the pre-commit hook run; we do NOT auto-fix
+      # in CI. On failure, emit a `::error::` pointing the author at `--fix` (see the comment step).
       - name: Run check
         id: check
         env:
-          REF_NAME: ${{ github.ref_name }} # via env, never interpolated into the shell (zizmor: template-injection)
+          EVENT: ${{ github.event_name }}                                       # via env, never interpolated (zizmor: template-injection)
+          SCOPE_INPUT: ${{ inputs.scope }}                                      # 'all'|'pr' on manual dispatch; empty on PR/schedule
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            if ! mise run check --pr; then
-              echo "::error::Lint & format failed. Fix it locally with 'mise run check --fix --pr', then push. ('mise run setup' installs the pre-commit hook so this happens automatically.)"
-              exit 1
-            fi
-          else
-            if ! mise run check --all; then
-              echo "::error::Lint & format failed on $REF_NAME. Fix it with 'mise run check --fix --all'."
-              exit 1
-            fi
-          fi
+          # PRs check changed files (--pr); schedule/dispatch default to --all (dispatch can pick --pr).
+          [ "$EVENT" = pull_request ] && scope="pr" || scope="${SCOPE_INPUT:-all}"
+          # hk's --pr resolves the base via origin/HEAD, which the Actions checkout never sets; point it
+          # at the PR base so hk diffs origin/<base>...HEAD (else it finds 0 files and passes green).
+          [ "$scope" = pr ] && git remote set-head origin "$BASE_REF" >/dev/null 2>&1 || true
+          mise run check "--$scope" || {
+            echo "::error::Lint & format failed on $REF_NAME — fix locally with 'mise run check --fix --$scope', then push. ('mise run setup' installs the pre-commit hook so this happens on every commit.)"
+            exit 1
+          }
 
       # One sticky PR comment pointing at `--fix`: post/update it when the check fails,
       # delete it once the check passes. No inline suggestions — the author runs the fixer.

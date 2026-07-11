@@ -228,12 +228,13 @@ run = 'rm -rf app && echo "demo app removed"'
 
 # ── 🪝 hooks ──────────────────────────────────────────────────────────────────
 [hooks]
-enter = "mise run setup:check"
-postinstall = "hk install --mise" # self-installs git hooks on every `mise install`
+enter = "MISE_OFFLINE=1 mise run setup:check" # offline-safe: don't re-resolve tools on every cd
+postinstall = "hk install --mise"             # self-installs git hooks on every `mise install`
 
 # ── ⚙️ settings ───────────────────────────────────────────────────────────────
 [settings]
 lockfile = true                     # mise.lock pins exact versions + checksums + attestations per platform
+minimum_release_age = "7d"          # supply-chain cooldown; skip releases newer than 7 days
 disable_backends = ["asdf", "vfox"]
 github.gh_cli_tokens = true         # avoid GitHub API rate limits on tool installs
 github.use_git_credentials = true
