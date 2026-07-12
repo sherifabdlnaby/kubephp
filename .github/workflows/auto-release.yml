@@ -5,10 +5,15 @@ on:
     branches:
       - main
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, edited]
 
 permissions:
   contents: read
+
+# Serialize runs: the release draft is shared state, concurrent runs race it.
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
 
 jobs:
   publish:
