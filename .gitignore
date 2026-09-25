@@ -1,6 +1,10 @@
 # Application directory (dynamically created or user's app)
 /app/
 
+# mise: per-developer overrides
+mise.local.toml
+mise.*.local.toml
+
 # IDE
 /.idea/
 /.vscode/

@@ -1,10 +1,13 @@
 # Drives the project's own `mise run check` (the same task local dev + the pre-commit
 # hook use) and reports lint/format failures. On a PR it leaves one sticky comment
-# pointing the author at `mise run check --fix`. Copy and adapt. See references/ci.md.
+# pointing the author at `mise run check --fix`.
 name: 🎨 Linters, Validators, and Formatters
 
 on:
   pull_request: {}
+  # Merges to the default branch: sweep right away instead of waiting up to a day for the cron.
+  push:
+    branches: [main]
   schedule:
     # Daily sweep so the default branch can't quietly rot.
     - cron: "0 0 * * *"
@@ -47,6 +50,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
+          version: "2026.9.13" # pin mise itself, not just the action
           install: true
           install_args: "--locked" # honor mise.lock
           cache: true

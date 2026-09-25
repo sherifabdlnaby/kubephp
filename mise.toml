@@ -1,11 +1,14 @@
 # mise config — single source of truth for tools & tasks. See README.md / AGENTS.md.
 # Fresh clone: `mise trust && mise run setup`. Lint: `mise run check`. List tasks: `mise tasks`.
 
-min_version = "2026.6.11"
+min_version = "2026.9.13" # oldest mise that supports everything in this file
 
 # ── 🛠️ tools ──────────────────────────────────────────────────────────────────
 [tools]
-# uv backs the pipx tools (yamllint); without it mise falls back to pip, which rejects mise's
+# runtimes
+node = "24" # runs the npm-backed dclint
+
+# uv backs the pypi tools (yamllint); without it mise falls back to pip, which rejects mise's
 # release-age flag. Pinned so CI installs yamllint the same way local does.
 uv = "0.11"
 
@@ -25,12 +28,12 @@ lychee = "0.20"     # broken-link checker (offline)
 rumdl = "0.2"       # Markdown lint/format
 
 # pre-commit
-hk = "1.48.0"
+hk = "2.0.1" # full MAJOR.MINOR.PATCH pin, must match .config/hk.pkl's amends/import URLs
 
 # ── 🌳 environment ────────────────────────────────────────────────────────────
 [env]
 # Path to the PHP app mounted into the image; mirrors docker-compose's ${APP_BASE_DIR-.}
-APP_BASE_DIR = "{{ env.APP_BASE_DIR | default(value='.') }}"
+APP_BASE_DIR = { default = "." }
 
 # ── 📏 vars ───────────────────────────────────────────────────────────────────
 [vars]
@@ -39,26 +42,27 @@ setup_version = "1" # bump to nudge contributors to re-run `mise run setup`
 # ── ▶️ tasks ──────────────────────────────────────────────────────────────────
 # Standard tasks ---------------------------------------------------------------
 [tasks.setup] # one-time, idempotent bootstrap
-description = "Install all tools (and self-install git hooks)"
-depends_post = ["setup:stamp"]
-run = "mise install"
+description = "One-time, idempotent bootstrap: check prerequisites, then install tools (and self-install git hooks)"
+# Serial steps stop at the first failure: a missing prerequisite (see [doctor.checks]) fails fast,
+# and the stamp is only written after a good run (a `depends_post` stamp runs even when setup fails).
+run = ["mise doctor project", "mise install", { task = "setup:stamp" }]
 
 [tasks."setup:stamp"]
 hide = true
 quiet = true
-run = 'printf %s "{{vars.setup_version}}" > .mise/setup && echo "✅ Setup v{{vars.setup_version}} stamped"'
+run = 'mkdir -p .config/mise && printf %s "{{vars.setup_version}}" > .config/mise/setup && echo "✅ Setup v{{vars.setup_version}} stamped"'
 
 [tasks."setup:check"] # runs on `enter`; warns if stale, never fails
 hide = true
 quiet = true
-run = '[ "$(cat .mise/setup 2>/dev/null)" = "{{vars.setup_version}}" ] || echo "⚠️  Your setup is stale, run: mise run setup" >&2'
+run = '[ "$(cat .config/mise/setup 2>/dev/null)" = "{{vars.setup_version}}" ] || echo "⚠️  Your setup is stale, run: mise run setup" >&2'
 
 [tasks.check]
-description = "Run all linters/formatters/validators (same set as pre-commit & CI)"
+description = "Run all linters/formatters/validators on uncommitted changes (the suite CI runs)"
 alias = ["lint"]
 usage = '''
     flag "--fix"              help="apply fixes instead of only reporting"
-    flag "--all"              help="run on all files (default: staged only)"
+    flag "--all"              help="run on all files (default: uncommitted changes)"
     flag "--pr"               help="only files changed vs the default branch (conflicts with --all)"
     flag "--fail-fast"        help="stop at the first failing step (default: run all, report every failure)"
     flag "--step <step>"      var=#true help="run only these step(s)"
@@ -230,6 +234,13 @@ run = 'rm -rf app && echo "demo app removed"'
 [hooks]
 enter = "MISE_OFFLINE=1 mise run setup:check" # offline-safe: don't re-resolve tools on every cd
 postinstall = "hk install --mise"             # self-installs git hooks on every `mise install`
+
+# ── 🩺 doctor checks ──────────────────────────────────────────────────────────
+# Prerequisites mise can't install. `mise doctor project` runs them; setup runs it first.
+[doctor.checks.docker]
+description = "Docker engine is running"
+run = "docker info >/dev/null 2>&1"
+hint = "Install and start a Docker engine (Docker Desktop, OrbStack, Colima), then re-run: mise run setup"
 
 # ── ⚙️ settings ───────────────────────────────────────────────────────────────
 [settings]
