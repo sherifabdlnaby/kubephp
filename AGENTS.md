@@ -19,11 +19,15 @@ mise trust && mise run setup
 
 ## Hooks
 
-Commits run an [hk](https://hk.jdx.dev) pre-commit hook (installed by `mise run setup`) that runs the same `check`. If a commit is blocked, fix it with `mise run check --fix` — do **not** disable a step or bypass the hook to get a commit through. Hook config is `hk.pkl`; linter configs are at the repo root (`.hadolint.yaml`, `typos.toml`, `.betterleaks.toml`, `lychee.toml`, `rumdl.toml`, `.yamllint.yml`).
+`mise run setup` installs [hk](https://hk.jdx.dev) git hooks. On Git 2.54+ they live in git config (`hook.*`), so an empty `.git/hooks/` does not mean hooks are missing. Commits run the commit gates on staged files, pushes run the push gates, and CI runs both as `mise run check`, so a green commit is not yet a green CI. If a commit is blocked, fix it with `mise run check --fix`. Do **not** disable a step or bypass the hook to get a commit through. For a shorter loop, target steps with `mise run check --step <name>` (or `--skip-step`).
+
+Prerequisites mise can't install (a running Docker engine) are `[doctor.checks]` in `mise.toml`; setup runs them first, and `mise doctor project` re-runs them.
 
 ## Extending the setup
 
-- **New tool:** add it under `[tools]` in `mise.toml`, then `mise install`.
+- **New tool:** add it under `[tools]` in `mise.toml`, then `mise install`. Commit `mise.lock`; after a `[tools]` change regenerate it with `mise lock`.
 - **New task:** add a `[tasks.<name>]` block in `mise.toml` (see existing ones for the pattern).
-- **New linter:** add an `hk` builtin step in `hk.pkl`'s `linters` mapping (it's shared by both the `check` and `pre-commit` hooks); run `hk builtins` to list available ones.
+- **New linter:** add an hk builtin step to a gate tier in `.config/hk.pkl` (`commitGates` for fast per-file checks, `pushGates` for slower ones; `check` runs both). Run `hk builtins` to list available ones. Linter configs sit at the repo root.
+- **New prerequisite** mise can't install: add a `[doctor.checks.<name>]` probe with a `hint` in `mise.toml`.
+- `.config/mise/` holds the gitignored setup stamp that `setup` writes and the `enter` hook reads. Bump `vars.setup_version` only for a change nothing reconciles on its own (a new manual step or prerequisite).
 - The image itself is built from `Dockerfile` + the `docker/` directory (entrypoints, php/nginx/fpm configs, post-build/pre-run hooks). CI is in `.github/workflows/` (`lint.yml` runs `mise run check`; `build-test-scan.yml` builds/tests/scans the image).

@@ -59,7 +59,7 @@
 - Image tries to fail at build time as much as possible by running all sort of checks.
 - Ability to run Commands, Consumers and Crons using same image. (No supervisor or crontab)
 - Development Image **supports mounting code and hot-reloading and [XDebug out of the box](#debugging-with-xdebug)**.
-- Cache-friendly mechanism to update OS packages and auto-patch security vulnerabilities ([see cache mechanism](#cache-friendly-os-package-updates-and-auto-patching)).
+- Cache-friendly mechanism to update OS packages and auto-patch security vulnerabilities ([see cache mechanism](#os-package-cache-busting)).
 
 ## How to use with my project ?
 
@@ -117,11 +117,13 @@ mise doctor
 
 </details>
 
-Set up the project (installs every tool and the git hooks):
+Set up the project (checks that Docker is running, then installs every tool and the git hooks):
 
 ```bash
 mise trust && mise run setup
 ```
+
+`mise doctor project` re-runs the prerequisite checks (e.g. a running Docker engine) at any time.
 
 Everyday commands:
 
@@ -133,7 +135,7 @@ mise tasks          # list every available task
 mise run <task> --help   # show a task's flags
 ```
 
-**Git hooks:** `mise run setup` installs an [hk](https://hk.jdx.dev) pre-commit hook that runs the same `check` as CI. If a commit is blocked, fix it with `mise run check --fix` (don't bypass the hook). The hook config lives in `hk.pkl`.
+**Git hooks:** `mise run setup` installs [hk](https://hk.jdx.dev) git hooks. A commit lints and formats your staged files, a push runs the slower gates, and CI runs both as `mise run check`. If a commit is blocked, fix it with `mise run check --fix` (don't bypass the hook). The hook config lives in `.config/hk.pkl`.
 
 # Setup
 
