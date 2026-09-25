@@ -1,0 +1,105 @@
+// hk.pkl: git hooks for this repo. Tools come from mise (`mise.toml [tools]`).
+// Both URLs pin the hk version; keep them equal to the hk in mise.toml [tools] and bump them together.
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
+
+// Repo-wide ignores: committed paths only (.gitignore is already honored). Per-step `exclude` stacks on top.
+local commonIgnores =
+  List(
+    "app/**", // user's mounted PHP app (gitignored, but be explicit)
+    "docker/nginx/dev/certs/**", // self-signed dev TLS cert/key
+    "docker/php/reference.*.ini.dist", // vendored PHP upstream php.ini reference dumps
+    "**/*.min.*",
+  )
+
+// Adds `flag` right after `bin` in a builtin command, keeping the builtin's own args.
+local function withFlag(spec: CommandSpec, bin: String, flag: String): CommandSpec = (spec) {
+  command =
+    if (spec.command is String) (spec.command as String).replaceAll(bin + " ", bin + " " + flag + " ")
+    else (spec.command as Command) { argv = List(bin, flag) + (spec.command as Command).argv.filter((a) -> a != bin) }
+}
+
+// Gates by moment; each step lives in exactly one tier, hooks below only compose tiers.
+// `check` mounts the union: the repo's full contract and the only hook CI runs.
+
+// Commit gates: run on every commit. File-scoped, fast, auto-fixable.
+local commitGates: Mapping<String, Step> = new Mapping<String, Step> {
+  // Dockerfile / shell / compose. The shell builtins also match extensionless scripts by shebang.
+  ["hadolint"] = Builtins.hadolint
+  ["shellcheck"] = Builtins.shellcheck
+  ["shfmt"] = Builtins.shfmt
+  ["dclint"] = Builtins.dclint
+  // GitHub Actions
+  ["actionlint"] = Builtins.actionlint
+  ["zizmor"] = Builtins.zizmor
+  // No --verify (the SHA-vs-comment cross-check) so the step is hermetic: --check still fails
+  // on any unpinned action, but needs no GitHub token/network. zizmor's unpinned-uses backstops it.
+  ["pinact"] = (Builtins.pinact) {
+    check_diff = null
+    check_after_diff = false
+    check = "pinact run --check {{ files }}"
+    fix = "pinact run {{ files }}"
+  }
+  // config files
+  ["taplo"] = Builtins.taplo
+  ["yamllint"] = Builtins.yamllint
+  ["mise"] = Builtins.mise
+  // docs & spelling
+  ["rumdl"] = Builtins.rumdl
+  ["typos"] = Builtins.typos
+  // lychee does not honor `offline = true` from lychee.toml, so pass the flag. External URLs
+  // (examples like localhost:8080, domain.tld) would make CI flaky.
+  ["lychee"] = (Builtins.lychee) { check = withFlag(Builtins.lychee.check as CommandSpec, "lychee", "--offline") }
+  // secrets. betterleaks never auto-discovers its config; only the env var loads it.
+  ["betterleaks"] = (Builtins.betterleaks) { env { ["BETTERLEAKS_CONFIG"] = ".betterleaks.toml" } }
+  ["detect_private_key"] = Builtins.detect_private_key
+  // generic hygiene
+  ["newlines"] = Builtins.newlines
+  ["trailing_whitespace"] = Builtins.trailing_whitespace
+  ["mixed_line_ending"] = Builtins.mixed_line_ending
+  ["check_added_large_files"] = Builtins.check_added_large_files
+  ["check_merge_conflict"] = Builtins.check_merge_conflict
+  ["check_case_conflict"] = Builtins.check_case_conflict
+  ["check_executables_have_shebangs"] = Builtins.check_executables_have_shebangs
+  ["check_symlinks"] = Builtins.check_symlinks
+  ["byte_order_marker"] = Builtins.byte_order_marker
+}
+
+// Push gates: run before a push. Slower or branch-scoped checks that would drag the commit loop.
+// Logic lives in mise tasks (runnable standalone, identical in CI); steps here only route to them.
+local pushGates: Mapping<String, Step> = new Mapping<String, Step> {
+  // ["test"] { check = "mise run test" }
+}
+
+exclude = commonIgnores
+
+hooks {
+  // `hk check` / `mise run check`: the union, everything this repo enforces, and the only hook CI
+  // runs. Read-only; `--fix` applies to the tree and never stages. No `fix` hook: `hk check --fix`
+  // is the one write entry point, and a second mapping would drift.
+  ["check"] {
+    steps {
+      ...commitGates
+      ...pushGates
+    }
+  }
+
+  // `git commit` (staged): commit gates only; fix inline. `stash` makes tools judge (and fix) the
+  // staged snapshot, not the working tree, so unstaged hunks are not re-staged with the fixes.
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps = commitGates
+  }
+
+  // `git push`: push gates only (every commit already passed the commit gates). Best-effort
+  // locally (`--no-verify` skips); CI's union run is the authoritative gate.
+  ["pre-push"] {
+    steps = pushGates
+  }
+
+  // Commit message ({{commit_msg_file}}): no-op.
+  ["commit-msg"] {
+    steps {}
+  }
+}
