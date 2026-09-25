@@ -27,7 +27,7 @@ Prerequisites mise can't install (a running Docker engine) are `[doctor.checks]`
 
 - **New tool:** add it under `[tools]` in `mise.toml`, then `mise install`. Commit `mise.lock`; after a `[tools]` change regenerate it with `mise lock`.
 - **New task:** add a `[tasks.<name>]` block in `mise.toml` (see existing ones for the pattern).
-- **New linter:** add an hk builtin step to a gate tier in `.config/hk.pkl` (`commitGates` for fast per-file checks, `pushGates` for slower ones; `check` runs both). Run `hk builtins` to list available ones. Linter configs sit at the repo root.
+- **New linter:** add an hk builtin step to a gate tier in `.config/hk.pkl` (`commitGates` for fast per-file checks, `pushGates` for slower ones; `check` runs both). Run `hk builtins` to list available ones. Linter configs live beside it in `.config/`; wire a new one to its tool in the step (config env var or `--config` flag), since most tools only auto-discover configs at the repo root.
 - **New prerequisite** mise can't install: add a `[doctor.checks.<name>]` probe with a `hint` in `mise.toml`.
 - `.config/mise/` holds the gitignored setup stamp that `setup` writes and the `enter` hook reads. Bump `vars.setup_version` only for a change nothing reconciles on its own (a new manual step or prerequisite).
 - The image itself is built from `Dockerfile` + the `docker/` directory (entrypoints, php/nginx/fpm configs, post-build/pre-run hooks). CI is in `.github/workflows/` (`lint.yml` runs `mise run check`; `build-test-scan.yml` builds/tests/scans the image).

@@ -320,7 +320,7 @@ provenance = "github-attestations"
 
 [[tools.yamllint]]
 version = "1.38.0"
-backend = "pipx:yamllint"
+backend = "pypi:yamllint"
 
 [[tools.zizmor]]
 version = "1.25.2"

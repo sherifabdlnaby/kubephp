@@ -25,7 +25,7 @@ local function withFlag(spec: CommandSpec, bin: String, flag: String): CommandSp
 // Commit gates: run on every commit. File-scoped, fast, auto-fixable.
 local commitGates: Mapping<String, Step> = new Mapping<String, Step> {
   // Dockerfile / shell / compose. The shell builtins also match extensionless scripts by shebang.
-  ["hadolint"] = Builtins.hadolint
+  ["hadolint"] = (Builtins.hadolint) { check = withFlag(Builtins.hadolint.check as CommandSpec, "hadolint", "--config=.config/hadolint.yaml") }
   ["shellcheck"] = Builtins.shellcheck
   ["shfmt"] = Builtins.shfmt
   ["dclint"] = Builtins.dclint
@@ -42,16 +42,26 @@ local commitGates: Mapping<String, Step> = new Mapping<String, Step> {
   }
   // config files
   ["taplo"] = Builtins.taplo
-  ["yamllint"] = Builtins.yamllint
+  ["yamllint"] = (Builtins.yamllint) { env { ["YAMLLINT_CONFIG_FILE"] = ".config/yamllint.yml" } }
   ["mise"] = Builtins.mise
   // docs & spelling
-  ["rumdl"] = Builtins.rumdl
-  ["typos"] = Builtins.typos
-  // lychee does not honor `offline = true` from lychee.toml, so pass the flag. External URLs
+  ["rumdl"] = Builtins.rumdl // auto-discovers .config/rumdl.toml
+  ["typos"] = (Builtins.typos) {
+    check_diff = withFlag(Builtins.typos.check_diff as CommandSpec, "typos", "--config=.config/typos.toml")
+    fix = withFlag(Builtins.typos.fix as CommandSpec, "typos", "--config=.config/typos.toml")
+  }
+  // lychee does not honor `offline = true` from its config, so pass the flag. External URLs
   // (examples like localhost:8080, domain.tld) would make CI flaky.
-  ["lychee"] = (Builtins.lychee) { check = withFlag(Builtins.lychee.check as CommandSpec, "lychee", "--offline") }
+  ["lychee"] = (Builtins.lychee) {
+    check =
+      withFlag(
+        withFlag(Builtins.lychee.check as CommandSpec, "lychee", "--offline"),
+        "lychee",
+        "--config=.config/lychee.toml",
+      )
+  }
   // secrets. betterleaks never auto-discovers its config; only the env var loads it.
-  ["betterleaks"] = (Builtins.betterleaks) { env { ["BETTERLEAKS_CONFIG"] = ".betterleaks.toml" } }
+  ["betterleaks"] = (Builtins.betterleaks) { env { ["BETTERLEAKS_CONFIG"] = ".config/betterleaks.toml" } }
   ["detect_private_key"] = Builtins.detect_private_key
   // generic hygiene
   ["newlines"] = Builtins.newlines
