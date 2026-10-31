@@ -50,16 +50,7 @@ local commitGates: Mapping<String, Step> = new Mapping<String, Step> {
     check_diff = withFlag(Builtins.typos.check_diff as CommandSpec, "typos", "--config=.config/typos.toml")
     fix = withFlag(Builtins.typos.fix as CommandSpec, "typos", "--config=.config/typos.toml")
   }
-  // lychee does not honor `offline = true` from its config, so pass the flag. External URLs
-  // (examples like localhost:8080, domain.tld) would make CI flaky.
-  ["lychee"] = (Builtins.lychee) {
-    check =
-      withFlag(
-        withFlag(Builtins.lychee.check as CommandSpec, "lychee", "--offline"),
-        "lychee",
-        "--config=.config/lychee.toml",
-      )
-  }
+  ["lychee"] = (Builtins.lychee) { check = withFlag(Builtins.lychee.check as CommandSpec, "lychee", "--config=.config/lychee.toml") }
   // secrets. betterleaks never auto-discovers its config; only the env var loads it.
   ["betterleaks"] = (Builtins.betterleaks) { env { ["BETTERLEAKS_CONFIG"] = ".config/betterleaks.toml" } }
   ["detect_private_key"] = Builtins.detect_private_key
