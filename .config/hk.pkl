@@ -1,7 +1,7 @@
 // hk.pkl: git hooks for this repo. Tools come from mise (`mise.toml [tools]`).
 // Both URLs pin the hk version; keep them equal to the hk in mise.toml [tools] and bump them together.
-amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Builtins.pkl"
 
 // Repo-wide ignores: committed paths only (.gitignore is already honored). Per-step `exclude` stacks on top.
 local commonIgnores =
@@ -24,13 +24,18 @@ local function withFlag(spec: CommandSpec, bin: String, flag: String): CommandSp
 
 // Commit gates: run on every commit. File-scoped, fast, auto-fixable.
 local commitGates: Mapping<String, Step> = new Mapping<String, Step> {
+  // A typo in hk.pkl leaves a step that checks nothing and passes.
+  ["hk-validate"] {
+    glob = ".config/hk.pkl"
+    check = "hk validate --deny-warnings"
+  }
   // Dockerfile / shell / compose. The shell builtins also match extensionless scripts by shebang.
   ["hadolint"] = (Builtins.hadolint) { check = withFlag(Builtins.hadolint.check as CommandSpec, "hadolint", "--config=.config/hadolint.yaml") }
   ["shellcheck"] = Builtins.shellcheck
   ["shfmt"] = Builtins.shfmt
   ["dclint"] = Builtins.dclint
   // GitHub Actions
-  ["actionlint"] = Builtins.actionlint
+  ["jactionlint"] = Builtins.jactionlint
   ["zizmor"] = Builtins.zizmor
   // No --verify (the SHA-vs-comment cross-check) so the step is hermetic: --check still fails
   // on any unpinned action, but needs no GitHub token/network. zizmor's unpinned-uses backstops it.
@@ -50,16 +55,7 @@ local commitGates: Mapping<String, Step> = new Mapping<String, Step> {
     check_diff = withFlag(Builtins.typos.check_diff as CommandSpec, "typos", "--config=.config/typos.toml")
     fix = withFlag(Builtins.typos.fix as CommandSpec, "typos", "--config=.config/typos.toml")
   }
-  // lychee does not honor `offline = true` from its config, so pass the flag. External URLs
-  // (examples like localhost:8080, domain.tld) would make CI flaky.
-  ["lychee"] = (Builtins.lychee) {
-    check =
-      withFlag(
-        withFlag(Builtins.lychee.check as CommandSpec, "lychee", "--offline"),
-        "lychee",
-        "--config=.config/lychee.toml",
-      )
-  }
+  ["lychee"] = (Builtins.lychee) { check = withFlag(Builtins.lychee.check as CommandSpec, "lychee", "--config=.config/lychee.toml") }
   // secrets. betterleaks never auto-discovers its config; only the env var loads it.
   ["betterleaks"] = (Builtins.betterleaks) { env { ["BETTERLEAKS_CONFIG"] = ".config/betterleaks.toml" } }
   ["detect_private_key"] = Builtins.detect_private_key

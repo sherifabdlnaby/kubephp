@@ -1,5 +1,6 @@
 # lychee link checker config — https://github.com/lycheeverse/lychee
 # Offline: resolve local/relative links only; http(s) links show as excluded, not checked.
+# The docs' external URLs are mostly examples (localhost:8080, domain.tld), so checking them would fail.
 offline = true
 # Check `#anchor`s too, so a link to a renamed heading fails instead of passing on file existence.
-include_fragments = true
+include_fragments = "anchor-only"
