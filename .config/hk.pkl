@@ -24,6 +24,11 @@ local function withFlag(spec: CommandSpec, bin: String, flag: String): CommandSp
 
 // Commit gates: run on every commit. File-scoped, fast, auto-fixable.
 local commitGates: Mapping<String, Step> = new Mapping<String, Step> {
+  // A typo in hk.pkl leaves a step that checks nothing and passes.
+  ["hk-validate"] {
+    glob = ".config/hk.pkl"
+    check = "hk validate --deny-warnings"
+  }
   // Dockerfile / shell / compose. The shell builtins also match extensionless scripts by shebang.
   ["hadolint"] = (Builtins.hadolint) { check = withFlag(Builtins.hadolint.check as CommandSpec, "hadolint", "--config=.config/hadolint.yaml") }
   ["shellcheck"] = Builtins.shellcheck
