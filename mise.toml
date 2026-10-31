@@ -84,8 +84,8 @@ complete "service" run="docker compose config --services 2>/dev/null"
 run = "docker compose build $usage_service"
 
 [tasks.dev]
-description = "Start the dev stack (alias of up)"
-alias = ["up"]
+description = "Start the dev stack"
+alias = ["up", "dev:up"]
 run = "docker compose up -d"
 
 # docker-compose lifecycle (migrated from Makefile) ----------------------------
@@ -99,6 +99,7 @@ run = "docker compose up --build -d"
 
 [tasks.down]
 description = "Stop the stack and clean up"
+alias = ["dev:down"]
 run = "docker compose down"
 
 [tasks.start]
@@ -119,6 +120,7 @@ run = "docker compose stop $usage_service"
 
 [tasks.logs]
 description = "Tail container logs (optionally specific services)"
+alias = ["dev:logs"]
 usage = '''
 arg "[service]" var=#true help="compose service(s) to tail; default: all"
 complete "service" run="docker compose config --services 2>/dev/null"
@@ -131,6 +133,7 @@ run = "docker compose images"
 
 [tasks.ps]
 description = "Show running containers"
+alias = ["dev:status"]
 run = "docker compose ps"
 
 [tasks.command]
