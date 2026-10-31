@@ -173,7 +173,7 @@ However, in an environment where CI/CD pipelines will build the image, they will
     | **ARG**              | **Description** | **Default** |
     |----------------------|-----------------|-------------|
     | `PHP_VERSION`        | PHP Version used in the Image | `8.4` |
-    | `PHP_ALPINE_VERSION` | Alpine Version for the PHP Image | `3.22` |
+    | `PHP_ALPINE_VERSION` | Alpine Version for the PHP Image | `3.24` |
     | `NGINX_VERSION`      | Nginx Version | `1.28` |
     | `COMPOSER_VERSION`   | Composer Version used in Image | `2` |
     | `XDEBUG_VERSION`     | Xdebug Version to use in Development Image | `3.5.0` |
