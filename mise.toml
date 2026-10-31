@@ -1,34 +1,34 @@
 # mise config — single source of truth for tools & tasks. See README.md / AGENTS.md.
 # Fresh clone: `mise trust && mise run setup`. Lint: `mise run check`. List tasks: `mise tasks`.
 
-min_version = "2026.9.13" # oldest mise that supports everything in this file
+min_version = "2026.10.13" # oldest mise that supports everything in this file
 
 # ── 🛠️ tools ──────────────────────────────────────────────────────────────────
 [tools]
 # runtimes
-node = "24" # runs the npm-backed dclint
+node = "26" # runs the npm-backed dclint
 
 # uv backs the pypi tools (yamllint); without it mise falls back to pip, which rejects mise's
 # release-age flag. Pinned so CI installs yamllint the same way local does.
-uv = "0.11"
+uv = "0.13"
 
 # linters & formatters (this repo has no app runtime — it's Docker + shell + yaml/toml/md)
 hadolint = "2"      # Dockerfile
 shellcheck = "0.11" # POSIX /bin/sh scripts under docker/
 shfmt = "3"         # shell formatter
-actionlint = "1"    # GitHub Actions
+jactionlint = "2"   # GitHub Actions
 zizmor = "1"        # GitHub Actions security
-pinact = "3"        # pin GitHub Actions to SHAs
+pinact = "5"        # pin GitHub Actions to SHAs
 "npm:dclint" = "3"  # docker-compose linter
 taplo = "0.10"      # TOML lint/format (this file)
 yamllint = "1"      # YAML structure
 typos = "1"         # spell check
 betterleaks = "1"   # secret scanner
-lychee = "0.20"     # broken-link checker (offline)
-rumdl = "0.2"       # Markdown lint/format
+lychee = "0.24"     # broken-link checker (offline)
+rumdl = "0.3"       # Markdown lint/format
 
 # pre-commit
-hk = "2.0.1" # full MAJOR.MINOR.PATCH pin, must match .config/hk.pkl's amends/import URLs
+hk = "2.8.1" # full MAJOR.MINOR.PATCH pin, must match .config/hk.pkl's amends/import URLs
 
 # ── 🌳 environment ────────────────────────────────────────────────────────────
 [env]

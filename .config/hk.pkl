@@ -1,7 +1,7 @@
 // hk.pkl: git hooks for this repo. Tools come from mise (`mise.toml [tools]`).
 // Both URLs pin the hk version; keep them equal to the hk in mise.toml [tools] and bump them together.
-amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Builtins.pkl"
 
 // Repo-wide ignores: committed paths only (.gitignore is already honored). Per-step `exclude` stacks on top.
 local commonIgnores =
@@ -30,7 +30,7 @@ local commitGates: Mapping<String, Step> = new Mapping<String, Step> {
   ["shfmt"] = Builtins.shfmt
   ["dclint"] = Builtins.dclint
   // GitHub Actions
-  ["actionlint"] = Builtins.actionlint
+  ["jactionlint"] = Builtins.jactionlint
   ["zizmor"] = Builtins.zizmor
   // No --verify (the SHA-vs-comment cross-check) so the step is hermetic: --check still fails
   // on any unpinned action, but needs no GitHub token/network. zizmor's unpinned-uses backstops it.
