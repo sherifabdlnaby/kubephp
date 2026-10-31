@@ -1,6 +1,6 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
 ARG PHP_VERSION="8.4"
-ARG PHP_ALPINE_VERSION="3.22"
+ARG PHP_ALPINE_VERSION="3.24"
 ARG NGINX_VERSION="1.28"
 ARG COMPOSER_VERSION="2"
 ARG XDEBUG_VERSION="3.5.0"
