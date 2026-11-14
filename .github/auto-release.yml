@@ -55,25 +55,32 @@ autolabeler:
       - '*.md'
 
   - label: 'enhancement'
-    title: '/enhancement/✨i'
+    title:
+      - '/enhancement/✨i'
 
   - label: 'bugfix'
-    title: '/bugfix/i'
+    title:
+      - '/bugfix/i'
 
   - label: 'bug'
-    title: '/🐛|🐞|fixes/i'
+    title:
+      - '/🐛|🐞|fixes/i'
 
   - label: 'security-patch'
-    title: '/🔒|security fix/i'
+    title:
+      - '/🔒|security fix/i'
 
   - label: 'upgrades'
-    title: '/⬆️|upgrade/i'
+    title:
+      - '/⬆️|upgrade/i'
 
   - label: 'auto-update'
-    title: '/🤖/i'
+    title:
+      - '/🤖/i'
 
   - label: 'feature'
-    title: '/🚀|🎉/i'
+    title:
+      - '/🚀|🎉/i'
 
 change-template: |
   <details>
