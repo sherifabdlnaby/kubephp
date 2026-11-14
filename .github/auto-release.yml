@@ -4,16 +4,16 @@ version-template: '$MAJOR.$MINOR.$PATCH'
 version-resolver:
   major:
     labels:
-      - 'major'
+      - 'release:major'
   minor:
     labels:
-      - 'minor'
+      - 'release:minor'
       - 'enhancement'
       - 'feature'
   patch:
     labels:
       - 'auto-update'
-      - 'patch'
+      - 'release:patch'
       - 'fix'
       - 'chore'
       - 'bugfix'
