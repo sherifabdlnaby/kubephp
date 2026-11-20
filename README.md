@@ -15,7 +15,7 @@
 		<img src="https://img.shields.io/github/actions/workflow/status/sherifabdlnaby/kubephp/build-test-scan.yml?label=Tests&amp;branch=main" alt="Test Status">
 	</a>
 	<a>
-		<img src="https://img.shields.io/badge/PHP-8.4-%23777BB4?logo=php" alt="PHP 8.4">
+		<img src="https://img.shields.io/badge/PHP-8.5-%23777BB4?logo=php" alt="PHP 8.5">
 	</a>
 	<a>
 		<img src="https://img.shields.io/badge/Platform-amd64%20%7C%20arm64-blue" alt="Multi-arch">
@@ -53,7 +53,7 @@
 - Productions Image that are **immutable** and **fully contained**.
 - **Runs as non-root** in both application containers.
 - Configured for graceful shutdowns/restarts, **zero downtime deployments, auto-healing, and auto-scaling**.
-- **PHP 8.4 optimizations** including JIT compilation and OPcache file caching.
+- **PHP 8.5 optimizations** including JIT compilation and OPcache file caching.
 - Easily extend the image with extra configuration, and scripts; such as [post-build & pre-run scripts](#post-build-and-pre-run-optional-scripts).
 - Minimal startup time, container almost start serving requests almost instantly.
 - Image tries to fail at build time as much as possible by running all sort of checks.
@@ -172,11 +172,11 @@ However, in an environment where CI/CD pipelines will build the image, they will
 
     | **ARG**              | **Description** | **Default** |
     |----------------------|-----------------|-------------|
-    | `PHP_VERSION`        | PHP Version used in the Image | `8.4` |
+    | `PHP_VERSION`        | PHP Version used in the Image | `8.5` |
     | `PHP_ALPINE_VERSION` | Alpine Version for the PHP Image | `3.24` |
-    | `NGINX_VERSION`      | Nginx Version | `1.28` |
+    | `NGINX_VERSION`      | Nginx Version | `1.30` |
     | `COMPOSER_VERSION`   | Composer Version used in Image | `2` |
-    | `XDEBUG_VERSION`     | Xdebug Version to use in Development Image | `3.5.0` |
+    | `XDEBUG_VERSION`     | Xdebug Version to use in Development Image | `3.5.3` |
     | `OS_PACKAGE_UPGRADE_TRIGGER` | Cache buster for OS packages. Changing this value triggers a fresh installation and update of all OS packages. See [OS Package Cache Busting](#os-package-cache-busting) for details. | `2` |
     | `SECURITY_UPGRADES`  | Alpine packages force-upgraded on top of the base image (openssl family, busybox, musl, …) | see Dockerfile |
 
@@ -239,7 +239,7 @@ Note: It's a common recommendation to pin package versions. However in practice 
 
 ### Debugging with XDebug
 
-The development image includes XDebug 3.5.0 pre-configured and ready to use. This setup has been tested with **PHPStorm**.
+The development image includes XDebug 3.5.3 pre-configured and ready to use. This setup has been tested with **PHPStorm**.
 
 #### XDebug Configuration
 
