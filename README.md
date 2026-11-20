@@ -53,7 +53,7 @@
 - Productions Image that are **immutable** and **fully contained**.
 - **Runs as non-root** in both application containers.
 - Configured for graceful shutdowns/restarts, **zero downtime deployments, auto-healing, and auto-scaling**.
-- **PHP 8.5 optimizations** including JIT compilation and OPcache file caching.
+- **PHP 8.5 optimizations** including an OPcache file cache that keeps php-fpm restarts warm.
 - Easily extend the image with extra configuration, and scripts; such as [post-build & pre-run scripts](#post-build-and-pre-run-optional-scripts).
 - Minimal startup time, container almost start serving requests almost instantly.
 - Image tries to fail at build time as much as possible by running all sort of checks.
