@@ -1,9 +1,9 @@
 # ---------------------------------------------- Build Time Arguments --------------------------------------------------
-ARG PHP_VERSION="8.4"
+ARG PHP_VERSION="8.5"
 ARG PHP_ALPINE_VERSION="3.24"
-ARG NGINX_VERSION="1.28"
+ARG NGINX_VERSION="1.30"
 ARG COMPOSER_VERSION="2"
-ARG XDEBUG_VERSION="3.5.0"
+ARG XDEBUG_VERSION="3.5.3"
 ARG APP_BASE_DIR="."
 ARG OS_PACKAGE_UPGRADE_TRIGGER="2"
 # Alpine security backports the base image may not ship yet (openssl family, busybox, musl, …).
@@ -53,9 +53,10 @@ RUN apk add --no-cache --virtual .build-deps \
  # PHP Extensions --------------------------------- \
  && docker-php-ext-install -j$(nproc) \
       intl          \
-      opcache       \
       pdo_mysql     \
       zip           \
+ # PHP 8.5+ builds OPcache into the binary; older versions need the extension. \
+ && { php -m | grep -qx 'Zend OPcache' || docker-php-ext-install -j$(nproc) opcache; } \
  # Pecl Extensions -------------------------------- \
  && pecl install apcu \
  && docker-php-ext-enable apcu \
