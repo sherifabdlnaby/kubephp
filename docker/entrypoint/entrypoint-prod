@@ -5,6 +5,10 @@ set -eu
 
 echo "► Starting Production Entrypoint..."
 
+# opcache.file_cache (prod-php.ini) must exist, or PHP 8.5+ refuses to start. Create it at runtime because /tmp
+# may be an empty mount (e.g. a Kubernetes emptyDir).
+mkdir -p /tmp/opcache
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Run custom ad-hoc pre-run script
