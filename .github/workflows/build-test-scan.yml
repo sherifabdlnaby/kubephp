@@ -250,9 +250,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # auth trivy DB pulls to dodge anonymous rate limits
         with:
-          # >= 0.35.0 patches the supply-chain compromise (GHSA-69fq-xp46-6x23); v0.71.2 Trivy
-          # avoids the compromised 0.69.4 (and the non-existent 0.69.1 the action used to default to).
-          version: v0.71.2
+          # >= 0.35.0 patches the supply-chain compromise (GHSA-69fq-xp46-6x23). Trivy is pinned
+          # past the compromised 0.69.4 (the action's default lags, and once named a non-existent 0.69.1).
+          version: v0.76.2
           image-ref: kubephp-app:scan
           format: sarif
           output: trivy-results.sarif
