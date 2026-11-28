@@ -5,7 +5,7 @@ ARG NGINX_VERSION="1.30"
 ARG COMPOSER_VERSION="2"
 ARG XDEBUG_VERSION="3.5.3"
 ARG APP_BASE_DIR="."
-ARG OS_PACKAGE_UPGRADE_TRIGGER="2"
+ARG OS_PACKAGE_UPGRADE_TRIGGER="3"
 # Alpine security backports the base image may not ship yet (openssl family, busybox, musl, …).
 ARG SECURITY_UPGRADES="curl openssl libssl3 libcrypto3 c-ares libxml2 musl-utils busybox libsodium"
 
@@ -72,7 +72,8 @@ RUN apk add --no-cache --virtual .build-deps \
       done; \
     } \
  # Cleanup ---------------------------------------- \
- && rm -r /tmp/pear; \
+ # set -e ignores a failure inside an && chain, so end the chain with an explicit exit. \
+ && rm -r /tmp/pear || exit 1; \
  # - Detect Runtime Dependencies of the installed extensions. \
  # - src: https://github.com/docker-library/wordpress/blob/master/latest/php8.0/fpm-alpine/Dockerfile \
     out="$(php -r 'exit(0);')"; \
